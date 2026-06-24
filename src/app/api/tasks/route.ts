@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 type TaskStatus = 'Pending' | 'In Progress' | 'Completed' | 'Blocked';
 
 export interface Task {
