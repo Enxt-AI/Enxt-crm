@@ -27,3 +27,20 @@ export type ChangeRequest = {
   summary: string;
   status: "pending" | "applied" | "rejected";
 };
+export interface ZohoInvoice {
+  invoice_id: string;
+  customer_name: string;
+  total: number;
+  due_date: string;
+  status: string;
+  // Add any other fields you need
+}
+
+export interface ZohoSubscription {
+  subscription_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  // Add any other fields you need
+}

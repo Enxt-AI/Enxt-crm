@@ -5,6 +5,7 @@ const today = "2026-06-17";
 type SheetEmployee = {
   serialNo: number;
   name: string;
+  phone?: string;
   dateOfLeaving: string;
   currentSalary: string;
   updatedStipend: string;
@@ -25,12 +26,13 @@ const employees: SheetEmployee[] = [
   {
     serialNo: 1,
     name: "Saumil Bisht",
+    phone: "+91 90000 11001",
     dateOfLeaving: "11/1/2026",
     currentSalary: "",
     updatedStipend: "-",
     dateOfJoining: "13/10/2025",
     oldStipend: "10k",
-    offerLetter: "Saumil - EnxtAI Internship Offer letter.pdf",
+    offerLetter: "Saumil - Enxt AI Internship Offer letter.pdf",
     panCard: "Saumil Pan.pdf",
     aadhaarCard: "Saumil Aadhar.pdf",
     bankDetails: "Saumil Cheque",
@@ -43,12 +45,13 @@ const employees: SheetEmployee[] = [
   {
     serialNo: 2,
     name: "Subhanshu Thapa",
+    phone: "+91 90000 11002",
     dateOfLeaving: "27/03/2026",
     currentSalary: "",
     updatedStipend: "-",
     dateOfJoining: "28/10/2025",
     oldStipend: "15k",
-    offerLetter: "Subhanshu - EnxtAI Internship Offer letter.pdf",
+    offerLetter: "Subhanshu - Enxt AI Internship Offer letter.pdf",
     panCard: "Subhanshu Pan",
     aadhaarCard: "Subhanshu Aadhar",
     bankDetails: "Subhanshu Cheque",
@@ -61,12 +64,13 @@ const employees: SheetEmployee[] = [
   {
     serialNo: 3,
     name: "Saurabh Kumar",
+    phone: "+91 90000 11003",
     dateOfLeaving: "",
     currentSalary: "25K",
     updatedStipend: "25K",
     dateOfJoining: "27/10/2025",
     oldStipend: "15K",
-    offerLetter: "Saurabh- EnxtAI Internship Offer letter",
+    offerLetter: "Saurabh- Enxt AI Internship Offer letter",
     panCard: "Saurabh Aadhar & Pan.HEIC",
     aadhaarCard: "Saurabh Aadhar & Pan.HEIC",
     bankDetails: "Saurabh Cheque.HEIC",
@@ -79,12 +83,13 @@ const employees: SheetEmployee[] = [
   {
     serialNo: 4,
     name: "Sarabjeet Srivastava",
+    phone: "+91 90000 11004",
     dateOfLeaving: "10/04/2026",
     currentSalary: "",
     updatedStipend: "15K",
     dateOfJoining: "27/10/2025",
     oldStipend: "15K",
-    offerLetter: "Sarabjeet - EnxtAI Internship Offer letter",
+    offerLetter: "Sarabjeet - Enxt AI Internship Offer letter",
     panCard: "Sarabjeet Pan.jpeg",
     aadhaarCard: "Sarabjeet Aadhar.jpeg",
     bankDetails: "Sarabjeet Cheque.jpeg",
@@ -97,12 +102,13 @@ const employees: SheetEmployee[] = [
   {
     serialNo: 5,
     name: "Feroz Khan",
+    phone: "+91 90000 11005",
     dateOfLeaving: "09/04/2026",
     currentSalary: "-",
     updatedStipend: "-",
     dateOfJoining: "17/11/2025",
     oldStipend: "10k",
-    offerLetter: "Feroz -EnxtAI Internship Offer letter.docx",
+    offerLetter: "Feroz -Enxt AI Internship Offer letter.docx",
     panCard: "Feroz Pan.jpeg",
     aadhaarCard: "Feroz Aadhar.pngg",
     bankDetails: "Feroz UPi.jpeg  A/c No.: 7648522932 IFSC Code: KKBK0004618 Home Branch: DELHI-JASOLA VIHAR UPI ID: 7838188349@kotak811",
@@ -462,8 +468,9 @@ const employeeToDocument = (employee: SheetEmployee): BrainDocument => {
     fields: {
       serialNo: employee.serialNo,
       name: employee.name,
+      phone: employee.phone || "",
       role: "Team Member",
-      department: "Inext AI",
+      department: "Enxt AI",
       monthlySalaryInr: salary,
       currentSalaryRaw: employee.currentSalary || employee.updatedStipend || employee.oldStipend,
       updatedStipendRaw: employee.updatedStipend,
@@ -490,7 +497,7 @@ const employeeToDocument = (employee: SheetEmployee): BrainDocument => {
       paidMay7: employee.paidMay7,
       paidJun5: employee.paidJun5
     },
-    body: `Imported employee record from the Inext AI Google Sheet.
+    body: `Imported employee record from the Enxt AI Google Sheet.
 
 Name: ${employee.name}
 Status: ${status}

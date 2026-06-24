@@ -4,7 +4,7 @@
 
 The product name is **Enxt Brain**.
 
-Enxt Brain is an AI SLM company brain for Inext AI. It should help the founder manage employees, projects, clients, leads, and company operations from one clean interface.
+Enxt Brain is an AI SLM company brain for Enxt AI. It should help the founder manage employees, projects, clients, leads, and company operations from one clean interface.
 
 Everything should be stored in documents. Employees, projects, clients, leads, notes, policies, and updates should all be represented as documents with structured metadata. The UI can show these documents as tables, dashboards, CRM boards, and project views.
 

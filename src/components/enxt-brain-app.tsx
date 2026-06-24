@@ -12,24 +12,37 @@ import {
   FilePenLine,
   FileText,
   LayoutDashboard,
-  Pencil,
+  MessageCircle,
   MessageSquareText,
   PanelLeft,
+  Pencil,
   Search,
   Send,
   ShieldCheck,
   Sparkles,
   SquareKanban,
   Users,
-  X
+  UserPlus,
+  X,
+  CreditCard,
+  ClipboardList
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import EmployeeTasksView from "./EmployeeTasksView";
+import TaskAssignmentModal from "./TaskAssignmentModal";
+
+
+
+// Finance view component
+import FinanceView from "./FinanceView";
+
 
 import { brainDocuments } from "../lib/demo-documents";
 import type { BrainDocument, ChangeRequest, ChatMessage } from "../lib/types";
 
-type View = "dashboard" | "employees" | "projects" | "crm" | "documents";
+type View = "dashboard" | "employees" | "projects" | "crm" | "documents" | "finance" | "tasks";
 type EmployeeEditState = Record<string, string>;
 type LeadEditState = Record<string, string>;
 type ViewedEmployeeDocument = {
@@ -45,7 +58,8 @@ const navItems: { id: View; label: string; icon: LucideIcon }[] = [
   { id: "employees", label: "Employees", icon: Users },
   { id: "projects", label: "Projects", icon: SquareKanban },
   { id: "crm", label: "CRM", icon: BriefcaseBusiness },
-  { id: "documents", label: "Documents", icon: FileText }
+  { id: "documents", label: "Documents", icon: FileText },
+  { id: "tasks", label: "Tasks", icon: ClipboardList },
 ];
 
 const formatCurrency = (value: number) =>
@@ -77,28 +91,116 @@ const salaryInputToNumber = (value: string) => {
   return Number(cleaned.replace(/[^0-9.]/g, "")) || 0;
 };
 
-const leadStages = ["Old Leads", "Contacts", "Proposal", "Project Started", "Completed"] as const;
-const documentsStorageKey = "enxt-brain-documents-v7";
+function AnimatedValue({ value }: { value: string | number }) {
+  const strVal = String(value);
+  const numericPart = strVal.replace(/[^0-9.]/g, "");
+  const targetNumber = parseFloat(numericPart);
 
+  const [currentNumber, setCurrentNumber] = useState(0);
+
+  useEffect(() => {
+    if (isNaN(targetNumber) || targetNumber === 0) {
+      return;
+    }
+    
+    let start = 0;
+    const duration = 750; // ms
+    const startTime = performance.now();
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      const easedProgress = progress * (2 - progress);
+      const val = Math.floor(start + easedProgress * (targetNumber - start));
+      
+      setCurrentNumber(val);
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        setCurrentNumber(targetNumber);
+      }
+    };
+
+    requestAnimationFrame(step);
+  }, [targetNumber]);
+
+  if (isNaN(targetNumber) || targetNumber === 0) {
+    return <>{strVal}</>;
+  }
+
+  const matchesPrefix = strVal.match(/^[^0-9]*/);
+  const prefix = matchesPrefix ? matchesPrefix[0] : "";
+  const suffix = strVal.replace(prefix, "").replace(/[0-9,.]/g, "");
+
+  const formatted = currentNumber.toLocaleString("en-IN");
+  return <>{prefix}{formatted}{suffix}</>;
+}
+
+const leadStages = ["Old Leads", "Contacts", "Proposal", "Project Started", "Completed"] as const;
 export default function EnxtBrainApp() {
   const [activeView, setActiveView] = useState<View>("dashboard");
-  const [documents, setDocuments] = useState<BrainDocument[]>(() => {
-    if (typeof window === "undefined") {
-      return brainDocuments;
-    }
+  const [documents, setDocuments] = useState<BrainDocument[]>(brainDocuments);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [dbSyncStatus, setDbSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" | "loading" } | null>(null);
+  
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(true);
+  const [activeTabRect, setActiveTabRect] = useState<{ left: number; width: number; top: number; height: number } | null>(null);
+  const navContainerRef = useRef<HTMLDivElement>(null);
 
-    const storedDocuments = window.localStorage.getItem(documentsStorageKey);
-
-    if (!storedDocuments) {
-      return brainDocuments;
+  const updateActiveTabRect = () => {
+    if (!navContainerRef.current) return;
+    const activeEl = navContainerRef.current.querySelector(".notch-nav-item.active") as HTMLElement;
+    if (activeEl) {
+      setActiveTabRect({
+        left: activeEl.offsetLeft,
+        width: activeEl.offsetWidth,
+        top: activeEl.offsetTop,
+        height: activeEl.offsetHeight
+      });
     }
+  };
 
-    try {
-      return JSON.parse(storedDocuments) as BrainDocument[];
-    } catch {
-      return brainDocuments;
-    }
-  });
+  useEffect(() => {
+    updateActiveTabRect();
+    window.addEventListener("resize", updateActiveTabRect);
+    return () => window.removeEventListener("resize", updateActiveTabRect);
+  }, [activeView, isInitializing]);
+
+  useEffect(() => {
+    const timer = setTimeout(updateActiveTabRect, 40);
+    return () => clearTimeout(timer);
+  }, [activeView, isInitializing]);
+
+
+  useEffect(() => {
+    // Fetch initial documents from server
+    setDbSyncStatus("saving");
+    fetch("/api/documents", { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load documents");
+        return res.json();
+      })
+      .then((data) => {
+        if (data && Array.isArray(data) && data.length > 0) {
+          setDocuments(data);
+          setDbSyncStatus("saved");
+          console.log("[EnxtBrain] Loaded", data.length, "documents from database");
+        } else {
+          console.error("[EnxtBrain] Invalid documents format loaded", data);
+          setDbSyncStatus("error");
+        }
+      })
+      .catch((err) => {
+        console.error("[EnxtBrain] Failed to load documents from server", err);
+        setDbSyncStatus("error");
+      })
+      .finally(() => {
+        setIsInitializing(false);
+      });
+  }, []);
   const [documentQuery, setDocumentQuery] = useState("");
   const [selectedDocumentId, setSelectedDocumentId] = useState(brainDocuments[0].id);
   const [editText, setEditText] = useState(brainDocuments[0].body);
@@ -119,10 +221,41 @@ export default function EnxtBrainApp() {
     }
   ]);
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskRefreshKey, setTaskRefreshKey] = useState(0);
+  const handleTaskCreated = () => {
+    setTaskRefreshKey(k => k + 1);
+    setShowTaskModal(false);
+  };
 
   useEffect(() => {
-    window.localStorage.setItem(documentsStorageKey, JSON.stringify(documents));
-  }, [documents]);
+    if (isInitializing) return; // Don't save during initial load
+
+    console.log("[EnxtBrain] Saving", documents.length, "documents to database...");
+    setDbSyncStatus("saving");
+    fetch("/api/documents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(documents)
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to save documents");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.success) {
+          console.log("[EnxtBrain] ✓ Database saved successfully");
+          setDbSyncStatus("saved");
+        } else {
+          console.error("[EnxtBrain] ✗ Save returned unexpected response", data);
+          setDbSyncStatus("error");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to save documents", err);
+        setDbSyncStatus("error");
+      });
+  }, [documents, isInitializing]);
 
   const employees = useMemo(() => documents.filter((document) => document.type === "employee"), [documents]);
   const projects = useMemo(() => documents.filter((document) => document.type === "project"), [documents]);
@@ -234,10 +367,10 @@ export default function EnxtBrainApp() {
       current.map((document) =>
         document.id === selectedDocument.id
           ? {
-              ...document,
-              body: editText,
-              updatedAt: new Date().toISOString().slice(0, 10)
-            }
+            ...document,
+            body: editText,
+            updatedAt: new Date().toISOString().slice(0, 10)
+          }
           : document
       )
     );
@@ -257,18 +390,24 @@ export default function EnxtBrainApp() {
           ...fields,
           monthlySalaryInr,
           status,
-          updatedStipendRaw: "",
-          oldStipendRaw: "",
-          offerLetterStatus: fields.offerLetter.trim() ? "Available" : "Missing",
-          panCardStatus: fields.panCard.trim() ? "Available" : "Missing",
-          aadhaarCardStatus: fields.aadhaarCard.trim() ? "Available" : "Missing",
-          bankDetailsStatus: fields.bankDetails.trim() ? "Available" : "Missing",
-          bankDetailsDisplay: fields.bankDetails.trim() ? "Captured from portal - protected" : "",
-          offerLetterUrl: fields.offerLetterUrl,
-          panCardUrl: fields.panCardUrl,
-          aadhaarCardUrl: fields.aadhaarCardUrl,
-          bankDetailsUrl: fields.bankDetailsUrl
+          updatedStipendRaw: fields.updatedStipendRaw ?? "",
+          oldStipendRaw: fields.oldStipendRaw ?? "",
+          offerLetterStatus: (fields.offerLetter || "").trim() ? "Available" : "Missing",
+          panCardStatus: (fields.panCard || "").trim() ? "Available" : "Missing",
+          aadhaarCardStatus: (fields.aadhaarCard || "").trim() ? "Available" : "Missing",
+          bankDetailsStatus: (fields.bankDetails || "").trim() ? "Available" : "Missing",
+          bankDetailsDisplay: (fields.bankDetails || "").trim() ? "Captured from portal - protected" : "",
+          offerLetterUrl: fields.offerLetterUrl || "",
+          panCardUrl: fields.panCardUrl || "",
+          aadhaarCardUrl: fields.aadhaarCardUrl || "",
+          bankDetailsUrl: fields.bankDetailsUrl || "",
+          phone: fields.phone || ""
         };
+
+        // Strip any previous "Portal update:" blocks so they don't accumulate
+        const cleanBody = (document.body || "")
+          .replace(/\n\nPortal update:[\s\S]*?(?=\n\nPortal update:|$)/g, "")
+          .trimEnd();
 
         return {
           ...document,
@@ -277,12 +416,56 @@ export default function EnxtBrainApp() {
           tags: ["employee", status, "portal-editable"],
           updatedAt: new Date().toISOString().slice(0, 10),
           fields: updatedFields,
-          body: `${document.body}\n\nPortal update:\n- Employee record edited from Enxt Brain on ${new Date()
+          body: `${cleanBody}\n\nPortal update:\n- Employee record edited from Enxt Brain on ${new Date()
             .toISOString()
             .slice(0, 10)}.`
         };
       })
     );
+  };
+
+  const addEmployee = (fields: EmployeeEditState) => {
+    setDocuments((current) => {
+      const monthlySalaryInr = salaryInputToNumber(fields.currentSalaryRaw);
+      const newId = `emp-${fields.name?.toLowerCase().replace(/\s+/g, "-") || Date.now()}`;
+      
+      const newEmployee: BrainDocument = {
+        id: newId,
+        type: "employee",
+        title: `${fields.name || "New Employee"} - Active Employee`,
+        status: "Active",
+        owner: "Founder Office",
+        updatedAt: new Date().toISOString().slice(0, 10),
+        tags: ["employee", "Active", "portal-editable"],
+        fields: {
+          serialNo: `${current.filter(d => d.type === "employee").length + 1}`,
+          name: fields.name || "",
+          role: "Team Member",
+          department: "Enxt AI",
+          monthlySalaryInr,
+          dateOfJoining: fields.dateOfJoining || new Date().toISOString().slice(0, 10),
+          status: "Active",
+          pan: fields.panCard || "",
+          aadhaar: fields.aadhaarCard || "",
+          phone: fields.phone || "",
+          email: "",
+          location: "",
+          reportingTo: "",
+          offerLetterStatus: fields.offerLetter?.trim() ? "Available" : "Missing",
+          panCardStatus: fields.panCard?.trim() ? "Available" : "Missing",
+          aadhaarCardStatus: fields.aadhaarCard?.trim() ? "Available" : "Missing",
+          bankDetailsStatus: fields.bankDetails?.trim() ? "Available" : "Missing",
+          bankDetailsDisplay: fields.bankDetails?.trim() ? "Captured from portal - protected" : "",
+          offerLetterUrl: fields.offerLetterUrl || "",
+          panCardUrl: fields.panCardUrl || "",
+          aadhaarCardUrl: fields.aadhaarCardUrl || "",
+          bankDetailsUrl: fields.bankDetailsUrl || ""
+        },
+        body: `Portal update:\n- New employee record created from Enxt Brain on ${new Date().toISOString().slice(0, 10)}.`
+      };
+      
+      return [...current, newEmployee];
+    });
   };
 
   const updateLead = (leadId: string, fields: LeadEditState) => {
@@ -323,10 +506,10 @@ export default function EnxtBrainApp() {
       current.map((document) =>
         document.id === change.targetDocumentId
           ? {
-              ...document,
-              body: `${document.body}\n\nFounder-approved AI update:\n- ${change.summary}`,
-              updatedAt: new Date().toISOString().slice(0, 10)
-            }
+            ...document,
+            body: `${document.body}\n\nFounder-approved AI update:\n- ${change.summary}`,
+            updatedAt: new Date().toISOString().slice(0, 10)
+          }
           : document
       )
     );
@@ -342,71 +525,97 @@ export default function EnxtBrainApp() {
   };
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-lockup">
-          <div className="brand-mark">
-            <Bot size={22} aria-hidden="true" />
+    <div className="app-shell notch-theme">
+      {/* Floating Glassmorphic Notch Navbar */}
+      <header className="notch-navbar-container">
+        <div className="notch-navbar">
+          {/* Left: Brand logo & name */}
+          <div className="notch-brand" onClick={() => setActiveView("dashboard")}>
+            <div className="brand-mark-mini">
+              <Bot size={18} aria-hidden="true" />
+            </div>
+            <span className="brand-name">Enxt Brain</span>
           </div>
-          <div>
-            <p className="eyebrow">Inext AI</p>
-            <h1>Enxt Brain</h1>
-          </div>
-        </div>
 
-        <nav className="nav-list" aria-label="Main navigation">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                className={activeView === item.id ? "nav-item active" : "nav-item"}
-                key={item.id}
-                onClick={() => setActiveView(item.id)}
-                type="button"
-              >
-                <Icon size={18} aria-hidden="true" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+          {/* Center: Navigation Links with sliding background highlight */}
+          <nav className="notch-nav" ref={navContainerRef} aria-label="Main navigation">
+            {activeTabRect && (
+              <div 
+                className="nav-active-pill" 
+                style={{
+                  position: 'absolute',
+                  left: activeTabRect.left,
+                  width: activeTabRect.width,
+                  height: activeTabRect.height,
+                  top: activeTabRect.top,
+                  borderRadius: '999px',
+                  backgroundColor: 'var(--green-soft)',
+                  border: '1.5px solid rgba(22, 120, 79, 0.25)',
+                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  zIndex: 0
+                }}
+              />
+            )}
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  className={`notch-nav-item ${activeView === item.id ? 'active' : ''}`}
+                  onClick={() => setActiveView(item.id)}
+                  type="button"
+                  style={{ position: 'relative', zIndex: 1 }}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
 
-        <div className="sidebar-block">
-          <div className="sidebar-row">
-            <Database size={17} aria-hidden="true" />
-            <span>{documents.length} documents</span>
-          </div>
-          <div className="sidebar-row">
-            <ShieldCheck size={17} aria-hidden="true" />
-            <span>Approval write flow</span>
-          </div>
-        </div>
-      </aside>
-
-      <div className="main-shell">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">Founder workspace</p>
-            <h2>{getViewTitle(activeView)}</h2>
-          </div>
-          <div className="topbar-actions">
-            <div className="search-pill">
-              <Search size={16} aria-hidden="true" />
+          {/* Right: Search, Status Indicator Dot, and AI panel toggle */}
+          <div className="notch-actions">
+            <div className="notch-search">
+              <Search size={14} aria-hidden="true" />
               <input
-                aria-label="Search documents"
+                aria-label="Search memory"
                 onChange={(event) => setDocumentQuery(event.target.value)}
-                placeholder="Search memory"
+                placeholder="Search..."
                 value={documentQuery}
               />
             </div>
-            <button className="icon-button" onClick={() => setActiveView("documents")} title="Open documents" type="button">
-              <PanelLeft size={18} aria-hidden="true" />
+
+            <div 
+              className="sync-status-pill" 
+              title={`${documents.length} docs loaded. Sync state: ${dbSyncStatus}`}
+            >
+              <span className={`status-dot ${dbSyncStatus}`} />
+              <span className="sync-label">
+                {dbSyncStatus === 'saving' ? 'saving' : 'synced'}
+              </span>
+            </div>
+
+            <button 
+              className={`ai-toggle-btn ${isAiPanelOpen ? 'active' : ''}`}
+              onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+              title={isAiPanelOpen ? "Close AI Founder Chat" : "Open AI Founder Chat"}
+              type="button"
+            >
+              <MessageSquareText size={18} aria-hidden="true" />
             </button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className="content-grid">
-          <main className="workspace" aria-live="polite">
+      {/* Main shell: contains workspace and AI chat panel */}
+      <div className={`content-shell ${isAiPanelOpen ? '' : 'ai-collapsed'}`}>
+        <main className="workspace-container" aria-live="polite">
+          <div className="view-title-bar">
+            <p className="eyebrow">Founder Workspace</p>
+            <h2>{getViewTitle(activeView)}</h2>
+          </div>
+
+          <div className="workspace-content">
             {activeView === "dashboard" && (
               <DashboardView
                 clientValue={clientValue}
@@ -422,13 +631,17 @@ export default function EnxtBrainApp() {
             )}
 
             {activeView === "employees" && (
-              <EmployeesView employees={employees} monthlyPayroll={monthlyPayroll} onUpdateEmployee={updateEmployee} />
+              <EmployeesView employees={employees} projects={projects} monthlyPayroll={monthlyPayroll} onUpdateEmployee={updateEmployee} onAddEmployee={addEmployee} />
             )}
 
             {activeView === "projects" && <ProjectsView projects={projects} selectDocument={selectDocument} />}
 
             {activeView === "crm" && <CrmView leads={leads} onUpdateLead={updateLead} />}
 
+            {activeView === "finance" && (
+              <FinanceView />
+            )}
+            
             {activeView === "documents" && (
               <DocumentsView
                 editText={editText}
@@ -439,80 +652,127 @@ export default function EnxtBrainApp() {
                 selectedDocument={selectedDocument}
               />
             )}
-          </main>
+            
+            {activeView === "tasks" && (
+              <>
+                <EmployeeTasksView 
+                  key={taskRefreshKey} 
+                  employees={employees} 
+                  onAssignClick={() => setShowTaskModal(true)}
+                  onShowToast={(message: string, type: "success" | "error") => {
+                    setGlobalToast({ message, type });
+                    setTimeout(() => setGlobalToast(null), 5000);
+                  }}
+                />
 
-          <aside className="brain-panel" aria-label="AI chat">
-            <div className="brain-panel-header">
-              <div>
-                <p className="eyebrow">AI system</p>
-                <h3>Founder Chat</h3>
-              </div>
-              <label className="toggle">
-                <input checked={writeMode} onChange={(event) => setWriteMode(event.target.checked)} type="checkbox" />
-                <span>Write mode</span>
-              </label>
+                <TaskAssignmentModal 
+                  employees={employees} 
+                  onTaskCreated={handleTaskCreated} 
+                  open={showTaskModal}
+                  setOpen={setShowTaskModal}
+                  onShowToast={(message: string, type: "success" | "error") => {
+                    setGlobalToast({ message, type });
+                    setTimeout(() => setGlobalToast(null), 5000);
+                  }}
+                />
+              </>
+            )}
+          </div>
+        </main>
+
+        {/* Right side AI Chat Panel */}
+        <aside className={`brain-panel ${isAiPanelOpen ? 'open' : 'collapsed'}`} aria-label="AI chat">
+          <div className="brain-panel-header">
+            <div>
+              <p className="eyebrow">AI system</p>
+              <h3>Founder Chat</h3>
             </div>
+            <label className="toggle">
+              <input checked={writeMode} onChange={(event) => setWriteMode(event.target.checked)} type="checkbox" />
+              <span>Write mode</span>
+            </label>
+          </div>
 
-            <div className="message-list">
-              {messages.map((message) => (
-                <div className={`message ${message.role}`} key={message.id}>
-                  <p>{message.content}</p>
-                </div>
-              ))}
-              {isBrainThinking && (
-                <div className="message brain">
-                  <p>Thinking with company memory...</p>
-                </div>
-              )}
-            </div>
-
-            <form className="chat-form" onSubmit={askBrain}>
-              <input
-                aria-label="Ask Enxt Brain"
-                disabled={isBrainThinking}
-                onChange={(event) => setChatInput(event.target.value)}
-                placeholder={isBrainThinking ? "Enxt Brain is thinking" : "Ask or request a change"}
-                value={chatInput}
-              />
-              <button className="send-button" disabled={isBrainThinking} title="Send" type="submit">
-                <Send size={17} aria-hidden="true" />
-              </button>
-            </form>
-
-            <div className="change-queue">
-              <div className="mini-heading">
-                <FilePenLine size={16} aria-hidden="true" />
-                <span>AI change queue</span>
+          <div className="message-list">
+            {messages.map((message) => (
+              <div className={`message ${message.role}`} key={message.id}>
+                <p>{message.content}</p>
               </div>
-              {changeRequests.length === 0 ? (
-                <p className="empty-note">No pending edits.</p>
-              ) : (
-                changeRequests.slice(0, 4).map((change) => (
-                  <div className={`change-item ${change.status}`} key={change.id}>
-                    <strong>{change.title}</strong>
-                    <p>{change.summary}</p>
-                    <div className="change-actions">
-                      <span>{change.status}</span>
-                      {change.status === "pending" && (
-                        <div>
-                          <button onClick={() => applyChange(change)} title="Approve change" type="button">
-                            <Check size={15} aria-hidden="true" />
-                          </button>
-                          <button onClick={() => rejectChange(change)} title="Reject change" type="button">
-                            <X size={15} aria-hidden="true" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+            ))}
+            {isBrainThinking && (
+              <div className="message brain">
+                <p>Thinking with company memory...</p>
+              </div>
+            )}
+          </div>
+
+          <form className="chat-form" onSubmit={askBrain}>
+            <input
+              aria-label="Ask Enxt Brain"
+              disabled={isBrainThinking}
+              onChange={(event) => setChatInput(event.target.value)}
+              placeholder={isBrainThinking ? "Enxt Brain is thinking" : "Ask or request a change"}
+              value={chatInput}
+            />
+            <button className="send-button" disabled={isBrainThinking} title="Send" type="submit">
+              <Send size={17} aria-hidden="true" />
+            </button>
+          </form>
+
+          <div className="change-queue">
+            <div className="mini-heading">
+              <FilePenLine size={16} aria-hidden="true" />
+              <span>AI change queue</span>
+            </div>
+            {changeRequests.length === 0 ? (
+              <p className="empty-note">No pending edits.</p>
+            ) : (
+              changeRequests.slice(0, 4).map((change) => (
+                <div className={`change-item ${change.status}`} key={change.id}>
+                  <strong>{change.title}</strong>
+                  <p>{change.summary}</p>
+                  <div className="change-actions">
+                    <span>{change.status}</span>
+                    {change.status === "pending" && (
+                      <div>
+                        <button onClick={() => applyChange(change)} title="Approve change" type="button">
+                          <Check size={15} aria-hidden="true" />
+                        </button>
+                        <button onClick={() => rejectChange(change)} title="Reject change" type="button">
+                          <X size={15} aria-hidden="true" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
-          </aside>
-        </div>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
       </div>
+
+      {globalToast && (
+        <div 
+          className={`whatsapp-toast ${globalToast.type}`} 
+          style={{ 
+            position: 'fixed', 
+            top: '24px', 
+            right: '24px', 
+            zIndex: 99999, 
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            minWidth: '280px',
+            justifyContent: 'space-between'
+          }}
+        >
+          <span>{globalToast.message}</span>
+          <button className="icon-button" onClick={() => setGlobalToast(null)} type="button" style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
+
 }
 
 function DashboardView({
@@ -621,19 +881,31 @@ function DashboardView({
 
 function EmployeesView({
   employees,
+  projects,
   monthlyPayroll,
-  onUpdateEmployee
+  onUpdateEmployee,
+  onAddEmployee
 }: {
   employees: BrainDocument[];
+  projects: BrainDocument[];
   monthlyPayroll: number;
   onUpdateEmployee: (employeeId: string, fields: EmployeeEditState) => void;
+  onAddEmployee: (fields: EmployeeEditState) => void;
 }) {
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
+  const [isAddingNew, setIsAddingNew] = useState(false);
   const [editFields, setEditFields] = useState<EmployeeEditState>({});
   const [viewedDocument, setViewedDocument] = useState<ViewedEmployeeDocument | null>(null);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [documentFilter, setDocumentFilter] = useState("All");
+  const [whatsappToast, setWhatsappToast] = useState<{ message: string; type: "success" | "error" | "loading" } | null>(null);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const editingEmployee = employees.find((employee) => employee.id === editingEmployeeId);
   const activeCount = employees.filter((employee) => asText(employee, "status") === "Active").length;
   const exitedCount = employees.filter((employee) => asText(employee, "status") === "Exited").length;
@@ -678,7 +950,8 @@ function EmployeesView({
       paidMarch7: asText(employee, "paidMarch7"),
       paidFeb3: asText(employee, "paidFeb3"),
       paidMay7: asText(employee, "paidMay7"),
-      paidJun5: asText(employee, "paidJun5")
+      paidJun5: asText(employee, "paidJun5"),
+      phone: asText(employee, "phone")
     });
   };
 
@@ -687,6 +960,13 @@ function EmployeesView({
   };
 
   const saveEdit = () => {
+    if (isAddingNew) {
+      onAddEmployee(editFields);
+      setIsAddingNew(false);
+      setEditFields({});
+      return;
+    }
+
     if (!editingEmployeeId) {
       return;
     }
@@ -696,33 +976,227 @@ function EmployeesView({
     setEditFields({});
   };
 
+  const sendWhatsAppPing = async (employee: BrainDocument) => {
+    const phone = asText(employee, "phone");
+    const name = asText(employee, "name");
+
+    if (!phone) {
+      setWhatsappToast({ message: `No phone number for ${name}`, type: "error" });
+      setTimeout(() => setWhatsappToast(null), 4000);
+      return;
+    }
+
+    const missingDocs = [
+      asText(employee, "offerLetterStatus") === "Missing" && "Offer Letter",
+      asText(employee, "panCardStatus") === "Missing" && "PAN Card",
+      asText(employee, "aadhaarCardStatus") === "Missing" && "Aadhaar Card",
+      asText(employee, "bankDetailsStatus") === "Missing" && "Bank Details"
+    ].filter(Boolean);
+
+    let message: string;
+    if (missingDocs.length > 0) {
+      message = `Hi ${name}, this is an automated reminder from Enxt AI HR. We are missing the following documents in your profile:\n\n- ${missingDocs.join(
+        "\n- "
+      )}\n\nPlease submit them to the HR portal at your earliest convenience. Thank you!`;
+    } else {
+      message = `Hi ${name}, your Enxt AI HR profile is fully complete. Thank you!`;
+    }
+
+    setWhatsappToast({ message: `Sending to ${name}...`, type: "success" });
+
+    try {
+      const response = await fetch("/api/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, message })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const suffix = data.simulated ? " (simulated)" : "";
+        setWhatsappToast({ message: `✓ WhatsApp sent to ${name}${suffix}`, type: "success" });
+      } else {
+        setWhatsappToast({ message: `Failed: ${data.error}`, type: "error" });
+      }
+    } catch {
+      setWhatsappToast({ message: `Network error sending to ${name}`, type: "error" });
+    }
+
+    setTimeout(() => setWhatsappToast(null), 5000);
+  };
+
+  const runBulkProjectPing = async () => {
+    setIsBroadcasting(true);
+    const activeEmployees = employees.filter(e => asText(e, "status") === "Active" && asText(e, "phone"));
+    
+    let sentCount = 0;
+    
+    for (let i = 0; i < activeEmployees.length; i++) {
+      const employee = activeEmployees[i];
+      const phone = asText(employee, "phone");
+      const name = asText(employee, "name");
+      
+      setWhatsappToast({ message: `Sending project update to ${name} (${i + 1}/${activeEmployees.length})...`, type: "loading" });
+
+      const assignedProjects = projects.filter((proj) => {
+        const owner = asText(proj, "owner").toLowerCase();
+        return owner.includes(name.split(" ")[0].toLowerCase());
+      });
+
+      let message: string;
+      if (assignedProjects.length > 0) {
+        const projectLines = assignedProjects.map((proj, idx) => {
+          const title = proj.title;
+          const phase = asText(proj, "phase");
+          const dueDate = asText(proj, "dueDate");
+          const progress = asNumber(proj, "progress");
+          return `${idx + 1}. *${title}*\n   Phase: ${phase} | Progress: ${progress}%\n   Deadline: ${dueDate}`;
+        }).join("\n\n");
+
+        message = `Hi ${name}, here is your automated project update from Enxt AI:\n\n${projectLines}\n\nPlease ensure deadlines are on track. Reach out if you need support!`;
+      } else {
+        message = `Hi ${name}, this is an automated update from Enxt AI. You currently have no active projects assigned in the system. Contact your manager for new assignments.`;
+      }
+
+      try {
+        const response = await fetch("/api/whatsapp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, message })
+        });
+        if (response.ok) sentCount++;
+      } catch (e) {
+        console.error("Failed to send bulk project ping to", name, e);
+      }
+
+      // Small delay to prevent rate limits
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+    
+    setIsBroadcasting(false);
+    setWhatsappToast({ message: `✓ Broadcast complete! Sent to ${sentCount} employees.`, type: "success" });
+    setTimeout(() => setWhatsappToast(null), 5000);
+  };
+
+  const runGeneralBroadcast = async () => {
+    if (!broadcastMessage.trim()) return;
+    
+    setIsBroadcasting(true);
+    const activeEmployees = employees.filter(e => asText(e, "status") === "Active" && asText(e, "phone"));
+    
+    let sentCount = 0;
+    
+    for (let i = 0; i < activeEmployees.length; i++) {
+      const employee = activeEmployees[i];
+      const phone = asText(employee, "phone");
+      const name = asText(employee, "name");
+      
+      setWhatsappToast({ message: `Broadcasting message to ${name} (${i + 1}/${activeEmployees.length})...`, type: "loading" });
+
+      const message = `Hi ${name}, a message from Enxt AI:\n\n${broadcastMessage}`;
+
+      try {
+        const response = await fetch("/api/whatsapp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, message })
+        });
+        if (response.ok) sentCount++;
+      } catch (e) {
+        console.error("Failed to send broadcast to", name, e);
+      }
+
+      // Small delay to prevent rate limits
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+    
+    setIsBroadcasting(false);
+    setBroadcastMessage("");
+    setWhatsappToast({ message: `✓ Broadcast complete! Sent to ${sentCount} employees.`, type: "success" });
+    setTimeout(() => setWhatsappToast(null), 5000);
+  };
+
   return (
-    <section className="panel fill-panel">
+    <section className="panel fill-panel" style={{ position: 'relative' }}>
+      {whatsappToast && (
+        <div className={`whatsapp-toast ${whatsappToast.type}`}>
+          <span>{whatsappToast.message}</span>
+          <button className="icon-button" onClick={() => setWhatsappToast(null)} type="button">
+            <X size={14} />
+          </button>
+        </div>
+      )}
       <div className="employee-command">
         <div className="employee-title-block">
-          <p className="eyebrow">People</p>
-          <h3>Employee Registry</h3>
+          <div>
+            <p className="eyebrow">People</p>
+            <h3>Employee Registry</h3>
+          </div>
+          <button
+            className="primary-button"
+            onClick={() => {
+              setIsAddingNew(true);
+              setEditFields({});
+            }}
+            type="button"
+          >
+            <UserPlus size={16} aria-hidden="true" />
+            <span>Add Employee</span>
+          </button>
         </div>
         <div className="employee-kpis">
-          <div>
+          <div role="button" tabIndex={0} onClick={() => { setStatusFilter("All"); setDocumentFilter("All"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStatusFilter("All"); setDocumentFilter("All"); } }}>
             <span>Total</span>
-            <strong>{employees.length}</strong>
+            <strong><AnimatedValue value={employees.length} /></strong>
           </div>
-          <div>
+          <div role="button" tabIndex={0} onClick={() => { setStatusFilter("Active"); setDocumentFilter("All"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStatusFilter("Active"); setDocumentFilter("All"); } }}>
             <span>Active</span>
-            <strong>{activeCount}</strong>
+            <strong><AnimatedValue value={activeCount} /></strong>
           </div>
-          <div>
+          <div role="button" tabIndex={0} onClick={() => { setStatusFilter("Exited"); setDocumentFilter("All"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStatusFilter("Exited"); setDocumentFilter("All"); } }}>
             <span>Exited</span>
-            <strong>{exitedCount}</strong>
+            <strong><AnimatedValue value={exitedCount} /></strong>
           </div>
-          <div>
+          <div role="button" tabIndex={0} onClick={() => { setStatusFilter("All"); setDocumentFilter("All"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStatusFilter("All"); setDocumentFilter("All"); } }}>
             <span>Payroll</span>
-            <strong>{formatCurrency(monthlyPayroll)}</strong>
+            <strong><AnimatedValue value={formatCurrency(monthlyPayroll)} /></strong>
           </div>
-          <div>
+          <div role="button" tabIndex={0} onClick={() => { setDocumentFilter("Missing"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setDocumentFilter("Missing"); } }}>
             <span>Missing Docs</span>
-            <strong>{missingDocsCount}</strong>
+            <strong><AnimatedValue value={missingDocsCount} /></strong>
+          </div>
+        </div>
+
+        <div className="employee-automations">
+          <p className="eyebrow">WhatsApp Task Automation</p>
+          <div className="automations-actions-row">
+            <button 
+              className="primary-button whatsapp-btn" 
+              onClick={runBulkProjectPing} 
+              disabled={isBroadcasting}
+              type="button"
+            >
+              <BriefcaseBusiness size={16} aria-hidden="true" />
+              <span>Broadcast Project Updates</span>
+            </button>
+            <div className="announcement-input-group">
+              <input 
+                value={broadcastMessage}
+                onChange={e => setBroadcastMessage(e.target.value)}
+                placeholder="Type a company-wide announcement..." 
+                disabled={isBroadcasting}
+              />
+              <button 
+                className="primary-button whatsapp-btn" 
+                onClick={runGeneralBroadcast} 
+                disabled={isBroadcasting || !broadcastMessage.trim()}
+                type="button"
+              >
+                <Send size={16} aria-hidden="true" />
+                <span>Broadcast Message</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -797,10 +1271,23 @@ function EmployeesView({
                 <td>{asText(employee, "dateOfJoining")}</td>
                 <td>{presentLabel(asText(employee, "dateOfLeaving"))}</td>
                 <td>
-                  <button className="row-action-button" onClick={() => startEdit(employee)} type="button">
-                    <Pencil size={15} aria-hidden="true" />
-                    <span>Edit</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button className="row-action-button" onClick={() => startEdit(employee)} type="button">
+                      <Pencil size={15} aria-hidden="true" />
+                      <span>Edit</span>
+                    </button>
+                    {asText(employee, "phone") && asText(employee, "status") === "Active" && (
+                      <button
+                        className="row-action-button whatsapp-btn"
+                        onClick={() => sendWhatsAppPing(employee)}
+                        type="button"
+                        title="Send missing docs reminder via WhatsApp"
+                      >
+                        <MessageCircle size={15} aria-hidden="true" />
+                        <span>Ping</span>
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -815,15 +1302,15 @@ function EmployeesView({
         </div>
       )}
 
-      {editingEmployee && (
+      {mounted && (editingEmployee || isAddingNew) && createPortal(
         <div className="modal-backdrop" role="presentation">
-          <div className="employee-edit-panel employee-edit-modal" role="dialog" aria-modal="true" aria-label="Edit employee">
+          <div className="employee-edit-panel employee-edit-modal" role="dialog" aria-modal="true" aria-label={isAddingNew ? "Add employee" : "Edit employee"}>
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">Portal edit</p>
-                <h3>Edit {asText(editingEmployee, "name")}</h3>
+                <h3>{isAddingNew ? "Add New Employee" : `Edit ${asText(editingEmployee!, "name")}`}</h3>
               </div>
-              <button className="icon-button" onClick={() => setEditingEmployeeId(null)} title="Close editor" type="button">
+              <button className="icon-button" onClick={() => { setEditingEmployeeId(null); setIsAddingNew(false); }} title="Close editor" type="button">
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
@@ -848,20 +1335,19 @@ function EmployeesView({
               <EditableField label="Aadhaar Card URL" value={editFields.aadhaarCardUrl} onChange={(value) => updateField("aadhaarCardUrl", value)} />
               <EditableField label="Bank Details" value={editFields.bankDetails} onChange={(value) => updateField("bankDetails", value)} protectedValue />
               <EditableField label="Bank File URL" value={editFields.bankDetailsUrl} onChange={(value) => updateField("bankDetailsUrl", value)} protectedValue />
+              <EditableField label="Phone (WhatsApp)" value={editFields.phone} onChange={(value) => updateField("phone", value)} />
             </div>
-            <div className="editor-footer">
-              <span>Saved edits persist in this browser and update employee memory immediately.</span>
-              <div className="editor-actions">
-                <button className="secondary-button" onClick={() => setEditingEmployeeId(null)} type="button">
-                  Cancel
-                </button>
-                <button className="primary-button" onClick={saveEdit} type="button">
-                  Save employee
-                </button>
-              </div>
+            <div className="panel-footer">
+              <button className="secondary-button" onClick={() => { setEditingEmployeeId(null); setIsAddingNew(false); }} type="button">
+                Cancel
+              </button>
+              <button className="primary-button" onClick={saveEdit} type="button">
+                Save Changes
+              </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="employee-doc-vault">
@@ -923,7 +1409,7 @@ function EmployeesView({
   );
 }
 
-function EditableField({
+export function EditableField({
   label,
   value,
   onChange,
@@ -1002,7 +1488,7 @@ function EmployeeDocumentViewer({
 }) {
   const previewUrl = getPreviewUrl(document.url);
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" role="presentation">
       <section className="document-viewer" role="dialog" aria-modal="true" aria-label={`${document.label} document viewer`}>
         <div className="panel-heading">
@@ -1036,7 +1522,8 @@ function EmployeeDocumentViewer({
           <strong>{document.status}</strong>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1232,25 +1719,25 @@ function CrmView({ leads, onUpdateLead }: { leads: BrainDocument[]; onUpdateLead
             <h3>Lead Workspace</h3>
           </div>
           <div className="employee-kpis">
-            <div>
+            <div role="button" tabIndex={0} onClick={() => { setStageFilter("All"); setSignedFilter("All"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStageFilter("All"); setSignedFilter("All"); } }}>
               <span>Total Leads</span>
-              <strong>{leads.length}</strong>
+              <strong><AnimatedValue value={leads.length} /></strong>
             </div>
-            <div>
+            <div role="button" tabIndex={0} onClick={() => { setStageFilter("All"); setSignedFilter("All"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStageFilter("All"); setSignedFilter("All"); } }}>
               <span>Pipeline</span>
-              <strong>{formatCurrency(totalPipeline)}</strong>
+              <strong><AnimatedValue value={formatCurrency(totalPipeline)} /></strong>
             </div>
-            <div>
+            <div role="button" tabIndex={0} onClick={() => { setStageFilter("Project Started"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStageFilter("Project Started"); } }}>
               <span>Started</span>
-              <strong>{projectStartedCount}</strong>
+              <strong><AnimatedValue value={projectStartedCount} /></strong>
             </div>
-            <div>
+            <div role="button" tabIndex={0} onClick={() => { setStageFilter("Old Leads"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStageFilter("Old Leads"); } }}>
               <span>Old Leads</span>
-              <strong>{oldLeadCount}</strong>
+              <strong><AnimatedValue value={oldLeadCount} /></strong>
             </div>
-            <div>
+            <div role="button" tabIndex={0} onClick={() => { setStageFilter("Completed"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStageFilter("Completed"); } }}>
               <span>Completed</span>
-              <strong>{completedCount}</strong>
+              <strong><AnimatedValue value={completedCount} /></strong>
             </div>
           </div>
         </div>
@@ -1572,7 +2059,7 @@ function MetricCard({
         <Icon size={18} aria-hidden="true" />
       </div>
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong><AnimatedValue value={value} /></strong>
       <p>{detail}</p>
     </article>
   );
@@ -1592,6 +2079,10 @@ function getViewTitle(view: View) {
       return "CRM Pipeline";
     case "documents":
       return "Document Store";
+    case "tasks":
+      return "Employee Tasks";
+    case "finance":
+      return "Finance Workspace";
     default:
       return "Command Center";
   }

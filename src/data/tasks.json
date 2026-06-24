@@ -1,0 +1,53 @@
+[
+  {
+    "id": "task-1782193728277",
+    "title": "crm",
+    "description": "A CRM (Customer Relationship Management) Model is a system that helps a company manage its customers, leads, sales, invoices, subscriptions, support requests, and business relationships in one place.  Simple Definition  CRM = A central database where a company stores and tracks everything related to customers.  Instead of using multiple Excel sheets, emails, and notebooks, all information is organized in one system.",
+    "dueDate": "2026-06-29",
+    "status": "In Progress",
+    "assignedEmployeeIds": [
+      "emp-yug"
+    ]
+  },
+  {
+    "id": "task-1782194405015",
+    "title": "crm",
+    "description": "A CRM (Customer Relationship Management) Model is a system that helps a company manage its customers, leads, sales, invoices, subscriptions, support requests, and business relationships in one place.  Simple Definition  CRM = A central database where a company stores and tracks everything related to customers.  Instead of using multiple Excel sheets, emails, and notebooks, all information is organized in one system.",
+    "dueDate": "2026-06-24",
+    "status": "In Progress",
+    "assignedEmployeeIds": [
+      "emp-alok"
+    ]
+  },
+  {
+    "id": "task-1782210169825",
+    "title": "Multi Employee Task Test",
+    "description": "Testing assignment of multiple employees",
+    "dueDate": "2026-06-23",
+    "status": "Pending",
+    "assignedEmployeeIds": [
+      "emp-alok",
+      "emp-yug"
+    ]
+  },
+  {
+    "id": "task-1782215262752",
+    "title": "unlisted stox",
+    "description": "",
+    "dueDate": "2026-06-25",
+    "status": "In Progress",
+    "assignedEmployeeIds": [
+      "emp-poras"
+    ]
+  },
+  {
+    "id": "task-1782215281648",
+    "title": "video",
+    "description": "",
+    "dueDate": "2026-06-26",
+    "status": "In Progress",
+    "assignedEmployeeIds": [
+      "emp-mayank"
+    ]
+  }
+]

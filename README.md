@@ -1,6 +1,6 @@
 # Enxt Brain
 
-Enxt Brain is a lightweight Next.js prototype for an Inext AI company brain. It starts as a document-native CRM and founder dashboard for employees, AI projects, clients, and leads.
+Enxt Brain is a lightweight Next.js prototype for an Enxt AI company brain. It starts as a document-native CRM and founder dashboard for employees, AI projects, clients, and leads.
 
 ## Current MVP
 
