@@ -1480,21 +1480,21 @@ function DocumentReference({
 }
 
 function EmployeeDocumentViewer({
-  document,
+  document: viewedDoc,
   onClose
 }: {
   document: ViewedEmployeeDocument;
   onClose: () => void;
 }) {
-  const previewUrl = getPreviewUrl(document.url);
+  const previewUrl = getPreviewUrl(viewedDoc.url);
 
   return createPortal(
     <div className="modal-backdrop" role="presentation">
-      <section className="document-viewer" role="dialog" aria-modal="true" aria-label={`${document.label} document viewer`}>
+      <section className="document-viewer" role="dialog" aria-modal="true" aria-label={`${viewedDoc.label} document viewer`}>
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">{document.employeeName}</p>
-            <h3>{document.label} Document</h3>
+            <p className="eyebrow">{viewedDoc.employeeName}</p>
+            <h3>{viewedDoc.label} Document</h3>
           </div>
           <button className="icon-button" onClick={onClose} title="Close document viewer" type="button">
             <X size={18} aria-hidden="true" />
@@ -1502,15 +1502,15 @@ function EmployeeDocumentViewer({
         </div>
         {previewUrl ? (
           <div className="document-preview-frame">
-            <iframe src={previewUrl} title={`${document.employeeName} ${document.label}`} />
-            <a href={document.url} rel="noreferrer" target="_blank">
+            <iframe src={previewUrl} title={`${viewedDoc.employeeName} ${viewedDoc.label}`} />
+            <a href={viewedDoc.url} rel="noreferrer" target="_blank">
               Open original file
             </a>
           </div>
         ) : (
           <div className="document-preview-box">
             <FileText size={42} aria-hidden="true" />
-            <strong>{document.value}</strong>
+            <strong>{viewedDoc.value}</strong>
             <p>
               This record has a filename from the sheet, but no real file URL yet. Edit the employee and paste the
               Google Drive sharing link into the matching URL field.
@@ -1519,7 +1519,7 @@ function EmployeeDocumentViewer({
         )}
         <div className="document-viewer-meta">
           <span>Status</span>
-          <strong>{document.status}</strong>
+          <strong>{viewedDoc.status}</strong>
         </div>
       </section>
     </div>,
