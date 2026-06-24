@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const { phone, message } = await request.json();
+    const { phone, message, templateName, templateParams } = await request.json();
 
-    if (!phone || !message) {
-      return NextResponse.json({ error: "Phone and message are required" }, { status: 400 });
+    if (!phone) {
+      return NextResponse.json({ error: "Phone is required" }, { status: 400 });
     }
 
     const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
@@ -27,22 +27,44 @@ export async function POST(request: Request) {
       const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
       console.log('[whatsapp global api] Dispatching via Meta Cloud API to:', formattedTo);
       
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${whatsappToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      let payload: any;
+
+      if (templateName) {
+        payload = {
+          messaging_product: "whatsapp",
+          to: formattedTo,
+          type: "template",
+          template: {
+            name: templateName,
+            language: { code: "en_US" },
+            components: templateParams && templateParams.length > 0 ? [
+              {
+                type: "body",
+                parameters: templateParams.map((param: string) => ({ type: "text", text: String(param) }))
+              }
+            ] : []
+          }
+        };
+      } else {
+        payload = {
           messaging_product: "whatsapp",
           recipient_type: "individual",
           to: formattedTo,
           type: "text",
           text: {
             preview_url: false,
-            body: message,
+            body: message || "",
           },
-        }),
+        };
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${whatsappToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();

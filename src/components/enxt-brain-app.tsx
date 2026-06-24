@@ -993,13 +993,19 @@ function EmployeesView({
       asText(employee, "bankDetailsStatus") === "Missing" && "Bank Details"
     ].filter(Boolean);
 
-    let message: string;
+    let payload: any;
     if (missingDocs.length > 0) {
-      message = `Hi ${name}, this is an automated reminder from Enxt AI HR. We are missing the following documents in your profile:\n\n- ${missingDocs.join(
-        "\n- "
-      )}\n\nPlease submit them to the HR portal at your earliest convenience. Thank you!`;
+      payload = {
+        phone,
+        templateName: "hr_document_reminder",
+        templateParams: [name, missingDocs.join(", ")]
+      };
     } else {
-      message = `Hi ${name}, your Enxt AI HR profile is fully complete. Thank you!`;
+      payload = {
+        phone,
+        templateName: "hr_profile_complete",
+        templateParams: [name]
+      };
     }
 
     setWhatsappToast({ message: `Sending to ${name}...`, type: "success" });
@@ -1008,7 +1014,7 @@ function EmployeesView({
       const response = await fetch("/api/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, message })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
@@ -1094,13 +1100,17 @@ function EmployeesView({
       
       setWhatsappToast({ message: `Broadcasting message to ${name} (${i + 1}/${activeEmployees.length})...`, type: "loading" });
 
-      const message = `Hi ${name}, a message from Enxt AI:\n\n${broadcastMessage}`;
+      const payload = {
+        phone,
+        templateName: "company_announcement",
+        templateParams: [name, broadcastMessage]
+      };
 
       try {
         const response = await fetch("/api/whatsapp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, message })
+          body: JSON.stringify(payload)
         });
         if (response.ok) sentCount++;
       } catch (e) {
