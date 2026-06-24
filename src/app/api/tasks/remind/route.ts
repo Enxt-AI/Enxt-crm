@@ -89,7 +89,7 @@ async function sendWhatsApp(to: string, body: string): Promise<boolean> {
     const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
     const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
 
-    // Format destination number for Meta/Twilio
+    // Format destination number for Meta
     let cleanTo = to.trim();
     if (cleanTo.startsWith('whatsapp:')) {
       cleanTo = cleanTo.substring('whatsapp:'.length);
@@ -130,39 +130,7 @@ async function sendWhatsApp(to: string, body: string): Promise<boolean> {
       return res.ok;
     }
 
-    // 2. Fallback to Twilio if Twilio configuration exists
-    const accountSid = process.env.TWILIO_ACCOUNT_SID || '';
-    const authToken = process.env.TWILIO_AUTH_TOKEN || '';
-    const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || '';
-
-    if (accountSid && authToken && whatsappNumber && !accountSid.includes('placeholder')) {
-      console.log('[tasks/remind] Meta keys missing, trying Twilio fallback to:', formattedTo);
-      
-      const cleanFrom = whatsappNumber.startsWith('whatsapp:') ? whatsappNumber : `whatsapp:${whatsappNumber}`;
-      const cleanToTwilio = `whatsapp:+${formattedTo}`;
-      
-      const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-      const params = new URLSearchParams();
-      params.append('From', cleanFrom);
-      params.append('To', cleanToTwilio);
-      params.append('Body', body);
-
-      const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params,
-      });
-
-      const responseText = await res.text();
-      console.log('[tasks/remind] Twilio response:', { status: res.status, text: responseText });
-      return res.ok;
-    }
-
-    // 3. Simulation fallback if both are unconfigured
+    // 2. Simulation fallback if Meta API is unconfigured
     console.log('-----------------------------------------');
     console.log('SIMULATED WHATSAPP MESSAGE (No API Keys)');
     console.log(`To: ${formattedTo}`);

@@ -55,40 +55,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, messageId: data.messages?.[0]?.id });
     }
 
-    // 2. Fallback to Twilio
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER || "whatsapp:+14155238886";
-
-    if (accountSid && authToken && !accountSid.includes('placeholder')) {
-      console.log('[whatsapp global api] Meta keys missing, trying Twilio fallback to:', formattedTo);
-      
-      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-      const formData = new URLSearchParams();
-      formData.append("To", `whatsapp:+${formattedTo}`);
-      formData.append("From", fromNumber.startsWith('whatsapp:') ? fromNumber : `whatsapp:${fromNumber}`);
-      formData.append("Body", message);
-
-      const response = await fetch(twilioUrl, {
-        method: "POST",
-        headers: {
-          "Authorization": `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("Twilio Error:", data);
-        return NextResponse.json({ error: data.message || "Failed to send WhatsApp message" }, { status: response.status });
-      }
-
-      return NextResponse.json({ success: true, messageId: data.sid });
-    }
-
-    // 3. Simulation fallback if both are unconfigured
+    // 2. Simulation fallback if Meta API is unconfigured
     console.log("-----------------------------------------");
     console.log("SIMULATED WHATSAPP MESSAGE (No API Keys)");
     console.log(`To: whatsapp:+${formattedTo}`);
@@ -100,7 +67,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: true, 
       simulated: true, 
-      message: "Message successfully simulated. Add Meta/Twilio keys to .env.local to send for real." 
+      message: "Message successfully simulated. Add Meta keys to .env.local to send for real." 
     });
   } catch (error) {
     console.error("WhatsApp API Error:", error);
