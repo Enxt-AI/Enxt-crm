@@ -27,36 +27,16 @@ export async function POST(request: Request) {
       const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
       console.log('[whatsapp global api] Dispatching via Meta Cloud API to:', formattedTo);
       
-      let payload: any;
-
-      if (templateName) {
-        payload = {
-          messaging_product: "whatsapp",
-          to: formattedTo,
-          type: "template",
-          template: {
-            name: templateName,
-            language: { code: "en_US" },
-            components: templateParams && templateParams.length > 0 ? [
-              {
-                type: "body",
-                parameters: templateParams.map((param: string) => ({ type: "text", text: String(param) }))
-              }
-            ] : []
-          }
-        };
-      } else {
-        payload = {
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: formattedTo,
-          type: "text",
-          text: {
-            preview_url: false,
-            body: message || "",
-          },
-        };
-      }
+      const payload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: formattedTo,
+        type: "text",
+        text: {
+          preview_url: false,
+          body: message || "",
+        },
+      };
 
       const response = await fetch(url, {
         method: "POST",
