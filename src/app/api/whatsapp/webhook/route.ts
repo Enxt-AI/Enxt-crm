@@ -78,11 +78,71 @@ export async function POST(request: Request) {
     });
 
     if (!employee) {
-      console.log(`[whatsapp webhook] Phone number ${from} not associated with any employee.`);
+      console.log(`[whatsapp webhook] Phone number ${from} not associated with any employee. Responding as generic AI.`);
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        try {
+          const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
+          const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to a user whose phone number is not recognized in the employee database.
+The user sent you this message: "${textBody}"
+Reply to them in a helpful, professional, and concise manner. Let them know you are the Enxt Brain AI assistant.`;
+
+          const apiResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "x-goog-api-key": apiKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    role: "user",
+                    parts: [{ text: prompt }]
+                  }
+                ],
+                generationConfig: {
+                  temperature: 0.7,
+                }
+              })
+            }
+          );
+          
+          const payload = await apiResponse.json();
+          const answer = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (answer) {
+             await replyToWhatsApp(from, answer);
+             return NextResponse.json({ success: true }, { status: 200 });
+          }
+        } catch (error) {
+           console.error('[whatsapp webhook] Error calling Gemini:', error);
+        }
+      }
+
+      await replyToWhatsApp(from, `Hi! I am Enxt Brain. Your phone number is not currently associated with any employee record in our system.`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
     console.log(`[whatsapp webhook] Matched employee: ${employee.fields.name || employee.title}`);
+
+    // Load tasks early so we have context for AI chatbot
+    const tasksPath = path.join(process.cwd(), 'src', 'data', 'tasks.json');
+    let tasks: any[] = [];
+    try {
+      const tasksData = await fs.readFile(tasksPath, 'utf8');
+      tasks = JSON.parse(tasksData);
+    } catch (e) {
+      console.warn("[whatsapp webhook] Could not load tasks", e);
+    }
+
+    // Find tasks for this employee (support both old and new field names)
+    const employeeTasks = tasks.filter((t: any) => {
+      if (Array.isArray(t.assignedEmployeeIds)) return t.assignedEmployeeIds.includes(employee.id);
+      return t.assignedEmployeeId === employee.id;
+    });
 
     // Parse the status update command from textBody
     const lowerText = textBody.toLowerCase();
@@ -99,23 +159,61 @@ export async function POST(request: Request) {
     }
 
     if (!newStatus) {
-      console.log(`[whatsapp webhook] No status match in text "${textBody}"`);
+      console.log(`[whatsapp webhook] No status match in text "${textBody}". Forwarding to AI chatbot.`);
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        try {
+          const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
+          const tasksContext = employeeTasks.length > 0 
+            ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status})`).join('\n') 
+            : 'No active tasks.';
+            
+          const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to an employee named ${employee.fields.name || 'Unknown'}. 
+Their current tasks are:
+${tasksContext}
+
+The employee sent you this message: "${textBody}"
+Reply to them in a helpful, professional, and concise manner. If they are asking about their tasks, help them. If they want to update a task status, let them know they can reply with 'Completed', 'In Progress', 'Blocked', or 'Pending'.`;
+
+          const apiResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "x-goog-api-key": apiKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    role: "user",
+                    parts: [{ text: prompt }]
+                  }
+                ],
+                generationConfig: {
+                  temperature: 0.7,
+                }
+              })
+            }
+          );
+          
+          const payload = await apiResponse.json();
+          const answer = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (answer) {
+             await replyToWhatsApp(from, answer);
+             return NextResponse.json({ success: true }, { status: 200 });
+          }
+        } catch (error) {
+           console.error('[whatsapp webhook] Error calling Gemini:', error);
+        }
+      }
+      
       await replyToWhatsApp(from, `Hi ${employee.fields.name || 'there'}! I couldn't understand that command. Please reply with one of these keywords to update your task status:\n\n- *Completed* (or Done)\n- *In Progress*\n- *Blocked*\n- *Pending*`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // Load tasks
-    const tasksPath = path.join(process.cwd(), 'src', 'data', 'tasks.json');
-    const tasksData = await fs.readFile(tasksPath, 'utf8');
-    const tasks = JSON.parse(tasksData);
-
-    // Find tasks for this employee (support both old and new field names)
-    const employeeTasks = tasks.filter((t: any) => {
-      if (Array.isArray(t.assignedEmployeeIds)) return t.assignedEmployeeIds.includes(employee.id);
-      return t.assignedEmployeeId === employee.id;
-    });
-
-    
     if (employeeTasks.length === 0) {
       await replyToWhatsApp(from, `You have no tasks assigned to you right now.`);
       return NextResponse.json({ success: true }, { status: 200 });
