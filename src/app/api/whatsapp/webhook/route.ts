@@ -114,7 +114,7 @@ export async function POST(request: Request) {
       const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey) {
         try {
-          const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
+          const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
           const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to a user whose phone number is not recognized in the employee database.
 The user sent you this message: "${textBody}"
 Reply to them in a helpful, professional, and concise manner. Let them know you are the Enxt Brain AI assistant.`;
@@ -174,7 +174,7 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
       const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey) {
         try {
-          const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
+          const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
           const tasksContext = employeeTasks.length > 0 
             ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status})`).join('\n') 
             : 'No active tasks.';
