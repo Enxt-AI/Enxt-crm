@@ -147,6 +147,11 @@ export default function EnxtBrainApp() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [dbSyncStatus, setDbSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" | "loading" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" | "loading" = "success") => {
+    setGlobalToast({ message, type });
+    setTimeout(() => setGlobalToast(null), 3000);
+  };
   
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [activeTabRect, setActiveTabRect] = useState<{ left: number; width: number; top: number; height: number } | null>(null);
@@ -496,6 +501,12 @@ export default function EnxtBrainApp() {
       
       return [...current, newLead];
     });
+    showToast("Client added successfully", "success");
+  };
+
+  const deleteLead = (leadId: string) => {
+    setDocuments((current) => current.filter((document) => document.id !== leadId));
+    showToast("Client deleted successfully", "success");
   };
 
   const updateLead = (leadId: string, fields: LeadEditState) => {
@@ -666,7 +677,7 @@ export default function EnxtBrainApp() {
 
             {activeView === "projects" && <ProjectsView projects={projects} selectDocument={selectDocument} />}
 
-            {activeView === "crm" && <CrmView leads={leads} onUpdateLead={updateLead} onAddLead={addLead} />}
+            {activeView === "crm" && <CrmView leads={leads} onUpdateLead={updateLead} onAddLead={addLead} onDeleteLead={deleteLead} />}
 
             {activeView === "finance" && (
               <FinanceView />
@@ -1624,7 +1635,7 @@ function ProjectsView({
   );
 }
 
-function CrmView({ leads, onUpdateLead, onAddLead }: { leads: BrainDocument[]; onUpdateLead: (leadId: string, fields: LeadEditState) => void; onAddLead: (fields: LeadEditState) => void }) {
+function CrmView({ leads, onUpdateLead, onAddLead, onDeleteLead }: { leads: BrainDocument[]; onUpdateLead: (leadId: string, fields: LeadEditState) => void; onAddLead: (fields: LeadEditState) => void; onDeleteLead: (leadId: string) => void }) {
   const [leadSearch, setLeadSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [signedFilter, setSignedFilter] = useState("All");
@@ -2029,6 +2040,22 @@ function CrmView({ leads, onUpdateLead, onAddLead }: { leads: BrainDocument[]; o
             <div className="editor-footer">
               <span>Saved edits persist in this browser and update the lead pipeline immediately.</span>
               <div className="editor-actions">
+                {!isAddingNewLead && editingLeadId && (
+                  <button
+                    className="secondary-button"
+                    style={{ color: "#ef4444", borderColor: "#fca5a5", marginRight: "auto" }}
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to delete this client?")) {
+                        onDeleteLead(editingLeadId);
+                        setEditingLeadId(null);
+                        setLeadEditFields({});
+                      }
+                    }}
+                    type="button"
+                  >
+                    Delete client
+                  </button>
+                )}
                 <button className="secondary-button" onClick={() => { setEditingLeadId(null); setIsAddingNewLead(false); }} type="button">
                   Cancel
                 </button>
