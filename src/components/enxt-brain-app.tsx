@@ -3,6 +3,7 @@
 import {
   BadgeIndianRupee,
   Bot,
+  BotMessageSquare,
   BriefcaseBusiness,
   Building2,
   Check,
@@ -750,6 +751,14 @@ export default function EnxtBrainApp() {
           </div>
         </aside>
       </div>
+      {/* Mobile Chatbot FAB */}
+      <button
+        className="mobile-chat-fab"
+        onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+        title="Toggle AI Chat"
+      >
+        {isAiPanelOpen ? <X size={24} /> : <BotMessageSquare size={24} />}
+      </button>
 
       {globalToast && (
         <div 
