@@ -38,12 +38,13 @@ import TaskAssignmentModal from "./TaskAssignmentModal";
 
 // Finance view component
 import FinanceView from "./FinanceView";
+import WhatsAppChatView from "./WhatsAppChatView";
 
 
 import { brainDocuments } from "../lib/demo-documents";
 import type { BrainDocument, ChangeRequest, ChatMessage } from "../lib/types";
 
-type View = "dashboard" | "employees" | "projects" | "crm" | "documents" | "finance" | "tasks";
+type View = "dashboard" | "employees" | "projects" | "crm" | "documents" | "finance" | "tasks" | "whatsapp";
 type EmployeeEditState = Record<string, string>;
 type LeadEditState = Record<string, string>;
 type ViewedEmployeeDocument = {
@@ -61,6 +62,7 @@ const navItems: { id: View; label: string; icon: LucideIcon }[] = [
   { id: "crm", label: "CRM", icon: BriefcaseBusiness },
   { id: "documents", label: "Documents", icon: FileText },
   { id: "tasks", label: "Tasks", icon: ClipboardList },
+  { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
 ];
 
 const formatCurrency = (value: number) =>
@@ -717,6 +719,12 @@ export default function EnxtBrainApp() {
                   }}
                 />
               </>
+            )}
+
+            {activeView === "whatsapp" && (
+              <div className="h-[600px] w-full max-w-4xl mx-auto">
+                <WhatsAppChatView />
+              </div>
             )}
           </div>
         </main>
@@ -2169,6 +2177,8 @@ function getViewTitle(view: View) {
       return "Employee Tasks";
     case "finance":
       return "Finance Workspace";
+    case "whatsapp":
+      return "WhatsApp Chat History";
     default:
       return "Command Center";
   }

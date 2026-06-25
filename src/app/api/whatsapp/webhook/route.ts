@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { supabase } from '../../../lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +34,33 @@ export async function GET(request: Request) {
   });
 }
 
+async function saveMessageToDB(from: string, employeeName: string, text: string, type: 'inbound' | 'outbound') {
+  try {
+    const { data, error } = await supabase
+      .from('app_data')
+      .select('data')
+      .eq('key', 'whatsapp_messages')
+      .single();
+
+    // Ignore PGRST116 (not found)
+    const messages = (data?.data) || [];
+    messages.push({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      from,
+      employeeName,
+      text,
+      timestamp: new Date().toISOString(),
+      type
+    });
+
+    await supabase
+      .from('app_data')
+      .upsert({ key: 'whatsapp_messages', data: messages });
+  } catch (err) {
+    console.error("[whatsapp webhook] Failed to save message to Supabase", err);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
@@ -47,11 +73,10 @@ export async function POST(request: Request) {
     const message = value?.messages?.[0];
 
     if (!message) {
-      // Not a message event (could be a delivery status update)
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    const from = message.from; // Sender's phone number (e.g. 917056754400)
+    const from = message.from; 
     const textBody = message.text?.body?.trim();
 
     if (!from || !textBody) {
@@ -60,26 +85,32 @@ export async function POST(request: Request) {
 
     console.log(`[whatsapp webhook] Inbound from ${from}: "${textBody}"`);
 
-    // Resolve the sender to an employee in our database
-    const documentsPath = path.join(process.cwd(), 'src', 'data', 'documents.json');
-    const documentsData = await fs.readFile(documentsPath, 'utf8');
-    const documents = JSON.parse(documentsData);
+    // Fetch documents from Supabase
+    const { data: docData } = await supabase
+      .from('app_data')
+      .select('data')
+      .eq('key', 'documents')
+      .single();
 
-    const cleanFrom = from.replace(/\D/g, ''); // standard digits only
+    const documents = docData?.data || [];
+    const cleanFrom = from.replace(/\D/g, ''); 
 
-    // Find the employee by phone number
+    // Find employee
     const employee = documents.find((doc: any) => {
       if (doc.type !== 'employee') return false;
       const phone = doc.fields?.phone;
       if (!phone) return false;
       const cleanPhone = phone.replace(/\D/g, '');
-      // Match if one contains the other (e.g. 917056754400 matches 7056754400)
       return cleanPhone.includes(cleanFrom) || cleanFrom.includes(cleanPhone);
     });
 
+    const employeeName = employee?.fields?.name || employee?.title || "Unknown User";
+
+    // Save INBOUND message
+    await saveMessageToDB(from, employeeName, textBody, 'inbound');
+
     if (!employee) {
       console.log(`[whatsapp webhook] Phone number ${from} not associated with any employee. Responding as generic AI.`);
-      
       const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey) {
         try {
@@ -88,63 +119,43 @@ export async function POST(request: Request) {
 The user sent you this message: "${textBody}"
 Reply to them in a helpful, professional, and concise manner. Let them know you are the Enxt Brain AI assistant.`;
 
-          const apiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-            {
-              method: "POST",
-              headers: {
-                "x-goog-api-key": apiKey,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                contents: [
-                  {
-                    role: "user",
-                    parts: [{ text: prompt }]
-                  }
-                ],
-                generationConfig: {
-                  temperature: 0.7,
-                }
-              })
-            }
-          );
+          const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: "POST",
+            headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } })
+          });
           
           const payload = await apiResponse.json();
           const answer = payload.candidates?.[0]?.content?.parts?.[0]?.text;
           
           if (answer) {
-             await replyToWhatsApp(from, answer);
+             await replyToWhatsApp(from, employeeName, answer);
              return NextResponse.json({ success: true }, { status: 200 });
           }
-        } catch (error) {
-           console.error('[whatsapp webhook] Error calling Gemini:', error);
-        }
+        } catch (error) { console.error('[whatsapp webhook] Error calling Gemini:', error); }
       }
 
-      await replyToWhatsApp(from, `Hi! I am Enxt Brain. Your phone number is not currently associated with any employee record in our system.`);
+      await replyToWhatsApp(from, employeeName, `Hi! I am Enxt Brain. Your phone number is not currently associated with any employee record in our system.`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    console.log(`[whatsapp webhook] Matched employee: ${employee.fields.name || employee.title}`);
+    console.log(`[whatsapp webhook] Matched employee: ${employeeName}`);
 
-    // Load tasks early so we have context for AI chatbot
-    const tasksPath = path.join(process.cwd(), 'src', 'data', 'tasks.json');
-    let tasks: any[] = [];
+    // Load tasks from Supabase
+    let employeeTasks: any[] = [];
     try {
-      const tasksData = await fs.readFile(tasksPath, 'utf8');
-      tasks = JSON.parse(tasksData);
+      const { data: tasksData } = await supabase
+        .from('tasks')
+        .select('*')
+        .contains('assigned_employee_ids', [employee.id]);
+        
+      if (tasksData) {
+        employeeTasks = tasksData;
+      }
     } catch (e) {
-      console.warn("[whatsapp webhook] Could not load tasks", e);
+      console.warn("[whatsapp webhook] Could not load tasks from Supabase", e);
     }
 
-    // Find tasks for this employee (support both old and new field names)
-    const employeeTasks = tasks.filter((t: any) => {
-      if (Array.isArray(t.assignedEmployeeIds)) return t.assignedEmployeeIds.includes(employee.id);
-      return t.assignedEmployeeId === employee.id;
-    });
-
-    // Parse the status update command from textBody
     const lowerText = textBody.toLowerCase();
     let newStatus: 'Pending' | 'In Progress' | 'Completed' | 'Blocked' | null = null;
 
@@ -160,7 +171,6 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
 
     if (!newStatus) {
       console.log(`[whatsapp webhook] No status match in text "${textBody}". Forwarding to AI chatbot.`);
-      
       const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey) {
         try {
@@ -169,84 +179,69 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
             ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status})`).join('\n') 
             : 'No active tasks.';
             
-          const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to an employee named ${employee.fields.name || 'Unknown'}. 
+          const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to an employee named ${employeeName}. 
 Their current tasks are:
 ${tasksContext}
 
 The employee sent you this message: "${textBody}"
 Reply to them in a helpful, professional, and concise manner. If they are asking about their tasks, help them. If they want to update a task status, let them know they can reply with 'Completed', 'In Progress', 'Blocked', or 'Pending'.`;
 
-          const apiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-            {
-              method: "POST",
-              headers: {
-                "x-goog-api-key": apiKey,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                contents: [
-                  {
-                    role: "user",
-                    parts: [{ text: prompt }]
-                  }
-                ],
-                generationConfig: {
-                  temperature: 0.7,
-                }
-              })
-            }
-          );
+          const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: "POST",
+            headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } })
+          });
           
           const payload = await apiResponse.json();
           const answer = payload.candidates?.[0]?.content?.parts?.[0]?.text;
           
           if (answer) {
-             await replyToWhatsApp(from, answer);
+             await replyToWhatsApp(from, employeeName, answer);
              return NextResponse.json({ success: true }, { status: 200 });
           }
-        } catch (error) {
-           console.error('[whatsapp webhook] Error calling Gemini:', error);
-        }
+        } catch (error) { console.error('[whatsapp webhook] Error calling Gemini:', error); }
       }
       
-      await replyToWhatsApp(from, `Hi ${employee.fields.name || 'there'}! I couldn't understand that command. Please reply with one of these keywords to update your task status:\n\n- *Completed* (or Done)\n- *In Progress*\n- *Blocked*\n- *Pending*`);
+      await replyToWhatsApp(from, employeeName, `Hi ${employeeName}! I couldn't understand that command. Please reply with one of these keywords to update your task status:\n\n- *Completed* (or Done)\n- *In Progress*\n- *Blocked*\n- *Pending*`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
     if (employeeTasks.length === 0) {
-      await replyToWhatsApp(from, `You have no tasks assigned to you right now.`);
+      await replyToWhatsApp(from, employeeName, `You have no tasks assigned to you right now.`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // Find the task to update:
-    // If they specified keywords from the task title, match it, otherwise take the latest active task.
     let taskToUpdate = employeeTasks.find((t: any) => {
       const words = t.title.toLowerCase().split(/\s+/);
       return words.some((word: string) => word.length > 2 && lowerText.includes(word));
     });
 
     if (!taskToUpdate) {
-      // Find the most recent non-completed task, or just the most recent task
       taskToUpdate = employeeTasks.find((t: any) => t.status !== 'Completed') || employeeTasks[employeeTasks.length - 1];
     }
 
     if (taskToUpdate) {
       const oldStatus = taskToUpdate.status;
-      taskToUpdate.status = newStatus;
       
-      // Save tasks
-      await fs.writeFile(tasksPath, JSON.stringify(tasks, null, 2), 'utf8');
-      console.log(`[whatsapp webhook] Updated task "${taskToUpdate.title}" from ${oldStatus} to ${newStatus}`);
+      // Save tasks to Supabase
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', taskToUpdate.id);
+        
+      if (updateError) {
+        console.error("[whatsapp webhook] Failed to update task in Supabase", updateError);
+      } else {
+        console.log(`[whatsapp webhook] Updated task "${taskToUpdate.title}" from ${oldStatus} to ${newStatus}`);
+      }
 
-      // Reply back confirmation
       let statusIcon = '⏳';
       if (newStatus === 'Completed') statusIcon = '✅';
       if (newStatus === 'In Progress') statusIcon = '⚡';
       if (newStatus === 'Blocked') statusIcon = '🛑';
 
       const replyMsg = `Task status updated successfully!\n\n📋 *Task:* ${taskToUpdate.title}\n${statusIcon} *New Status:* ${newStatus}`;
-      await replyToWhatsApp(from, replyMsg);
+      await replyToWhatsApp(from, employeeName, replyMsg);
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
@@ -256,7 +251,10 @@ Reply to them in a helpful, professional, and concise manner. If they are asking
   }
 }
 
-async function replyToWhatsApp(to: string, message: string) {
+async function replyToWhatsApp(to: string, employeeName: string, message: string) {
+  // Save OUTBOUND message first
+  await saveMessageToDB(to, employeeName, message, 'outbound');
+
   const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
 
