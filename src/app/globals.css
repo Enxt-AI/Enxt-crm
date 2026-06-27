@@ -2489,6 +2489,15 @@ main {
   flex-shrink: 0;
 }
 
+.notch-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .notch-search {
   display: flex;
   align-items: center;
@@ -2833,6 +2842,19 @@ main {
   
   .sync-status-pill {
     padding: 0 8px;
+    height: 32px;
+  }
+  
+  .sync-label {
+    display: none;
+  }
+  
+  .notch-search {
+    display: none;
+  }
+  
+  .notch-actions {
+    gap: 6px;
   }
   
   .content-shell {

@@ -85,12 +85,7 @@ export default function WhatsAppChatView() {
     );
   }, [messages]);
 
-  // Set initial active thread if none selected
-  useEffect(() => {
-    if (threads.length > 0 && !activeThreadFrom) {
-      setActiveThreadFrom(threads[0].from);
-    }
-  }, [threads, activeThreadFrom]);
+  // No auto-select — user must click an employee name to load chat
 
   // Filter threads by search term
   const filteredThreads = useMemo(() => {
