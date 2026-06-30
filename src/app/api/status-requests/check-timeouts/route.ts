@@ -86,7 +86,7 @@ function parseToISTDate(dateStr: string, timeStr?: string): Date | null {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const now = new Date();
     const nowTime = now.getTime();
@@ -206,11 +206,55 @@ export async function GET() {
         .upsert({ key: 'task_reminders_sent', data: sentReminders });
     }
 
+    // 3. Trigger daily check-ins (morning/midday/evening)
+    const istNow = new Date(nowTime + 5.5 * 60 * 60 * 1000);
+    const istHour = istNow.getUTCHours();
+    const istMinute = istNow.getUTCMinutes();
+    
+    let targetSchedule: 'morning' | 'midday' | 'evening' | null = null;
+    let scheduleTriggered = false;
+    let scheduleMessage = '';
+
+    // Check if current time is within a 10-minute window of the check-in time
+    // 9:00 AM to 9:10 AM IST
+    if (istHour === 9 && istMinute >= 0 && istMinute < 10) {
+      targetSchedule = 'morning';
+    }
+    // 1:00 PM to 1:10 PM IST
+    else if (istHour === 13 && istMinute >= 0 && istMinute < 10) {
+      targetSchedule = 'midday';
+    }
+    // 6:00 PM to 6:10 PM IST
+    else if (istHour === 18 && istMinute >= 0 && istMinute < 10) {
+      targetSchedule = 'evening';
+    }
+
+    if (targetSchedule) {
+      try {
+        const requestUrl = new URL(request.url);
+        const origin = requestUrl.origin;
+        console.log(`[check-timeouts] Triggering check-in send for ${targetSchedule} at ${origin}`);
+        
+        const sendRes = await fetch(`${origin}/api/status-requests/send?schedule=${targetSchedule}`);
+        const sendData = await sendRes.json();
+        scheduleTriggered = true;
+        scheduleMessage = sendData.message || 'Triggered check-in API';
+      } catch (err: any) {
+        console.error(`[check-timeouts] Failed to trigger check-in API:`, err);
+        scheduleMessage = `Error: ${err.message}`;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       expiredCount,
       tasksReminderSent,
-      remindersLogged
+      remindersLogged,
+      scheduleCheck: {
+        triggered: scheduleTriggered,
+        schedule: targetSchedule,
+        message: scheduleMessage
+      }
     });
 
   } catch (error: any) {
