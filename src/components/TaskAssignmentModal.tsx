@@ -7,6 +7,7 @@ export interface TaskData {
   title: string;
   description: string;
   dueDate: string;
+  dueTime?: string;
   status: string;
   assignedEmployeeIds: string[];
 }
@@ -40,6 +41,7 @@ export default function TaskAssignmentModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [dueTime, setDueTime] = useState('');
   const [status, setStatus] = useState('Pending');
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,7 +50,15 @@ export default function TaskAssignmentModal({
     if (editTask) {
       setTitle(editTask.title || '');
       setDescription(editTask.description || '');
-      setDueDate(editTask.dueDate || '');
+      // If the dueDate contains a time component (T), split it
+      if (editTask.dueDate && editTask.dueDate.includes('T')) {
+        const [datePart, timePart] = editTask.dueDate.split('T');
+        setDueDate(datePart);
+        setDueTime(timePart?.substring(0, 5) || '');
+      } else {
+        setDueDate(editTask.dueDate || '');
+        setDueTime(editTask.dueTime || '');
+      }
       setStatus(editTask.status || 'Pending');
       setSelectedEmployeeIds(editTask.assignedEmployeeIds || []);
     } else {
@@ -61,6 +71,7 @@ export default function TaskAssignmentModal({
     setTitle('');
     setDescription('');
     setDueDate('');
+    setDueTime('');
     setStatus('Pending');
   };
 
@@ -90,12 +101,14 @@ export default function TaskAssignmentModal({
     try {
       if (isEditMode && editTask?.id) {
         // ── EDIT MODE: PATCH existing task ──────────────────────────
+        // Combine date + time into a single ISO-ish string
+        const combinedDueDate = dueTime ? `${dueDate}T${dueTime}` : dueDate;
         const res = await fetch('/api/tasks', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editTask.id,
-            updates: { title, description, dueDate, status, assignedEmployeeIds: selectedEmployeeIds },
+            updates: { title, description, dueDate: combinedDueDate, dueTime, status, assignedEmployeeIds: selectedEmployeeIds },
           }),
         });
         if (!res.ok) {
@@ -105,11 +118,13 @@ export default function TaskAssignmentModal({
         onShowToast?.('✅ Task updated successfully!', 'success');
       } else {
         // ── CREATE MODE: POST new task ──────────────────────────────
+        // Combine date + time into a single ISO-ish string
+        const combinedDueDate = dueTime ? `${dueDate}T${dueTime}` : dueDate;
         const res = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            title, description, dueDate, status,
+            title, description, dueDate: combinedDueDate, dueTime, status,
             assignedEmployeeIds: selectedEmployeeIds,
           }),
         });
@@ -128,12 +143,13 @@ export default function TaskAssignmentModal({
           const phone = employee.fields?.phone;
           if (!phone) { notifFailed++; continue; }
 
+          const timeStr = dueTime ? ` at ${dueTime}` : '';
           const message =
             `📋 *New Task Assigned*\n\n` +
             `Hi ${employee.fields?.name || employee.title || 'there'}!\n\n` +
             `*Title:* ${title}\n` +
             `*Description:* ${description || 'No description provided.'}\n` +
-            `*Due Date:* ${formattedDate}\n` +
+            `*Due Date:* ${formattedDate}${timeStr}\n` +
             `*Status:* ${status}`;
 
           try {
@@ -197,14 +213,28 @@ export default function TaskAssignmentModal({
               <EditableField label="Title" value={title} onChange={setTitle} />
               <EditableField label="Description" value={description} onChange={setDescription} />
 
-              <label className="field-control">
-                <span>Due Date</span>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', gridColumn: '1 / -1' }}>
+                <label className="field-control" style={{ minWidth: 0 }}>
+                  <span>Due Date</span>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  />
+                </label>
+
+                <label className="field-control" style={{ minWidth: 0 }}>
+                  <span>Due Time</span>
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    placeholder="e.g. 17:00"
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  />
+                </label>
+              </div>
 
               <label className="field-control">
                 <span>Status</span>

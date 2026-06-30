@@ -61,11 +61,8 @@ async function saveMessageToDB(from: string, employeeName: string, text: string,
   }
 }
 
-export async function POST(request: Request) {
+async function processWebhookPayload(payload: any) {
   try {
-    const payload = await request.json();
-    console.log('[whatsapp webhook] Payload received:', JSON.stringify(payload, null, 2));
-
     // Extract message data
     const entry = payload.entry?.[0];
     const change = entry?.changes?.[0];
@@ -73,17 +70,17 @@ export async function POST(request: Request) {
     const message = value?.messages?.[0];
 
     if (!message) {
-      return NextResponse.json({ success: true }, { status: 200 });
+      return;
     }
 
-    const from = message.from; 
+    const from = message.from;
     const textBody = message.text?.body?.trim();
 
     if (!from || !textBody) {
-      return NextResponse.json({ success: true }, { status: 200 });
+      return;
     }
 
-    console.log(`[whatsapp webhook] Inbound from ${from}: "${textBody}"`);
+    console.log(`[whatsapp webhook bg-worker] Inbound from ${from}: "${textBody}"`);
 
     // Fetch documents from Supabase
     const { data: docData } = await supabase
@@ -93,7 +90,7 @@ export async function POST(request: Request) {
       .single();
 
     const documents = docData?.data || [];
-    const cleanFrom = from.replace(/\D/g, ''); 
+    const cleanFrom = from.replace(/\D/g, '');
 
     // Find employee
     const employee = documents.find((doc: any) => {
@@ -109,8 +106,97 @@ export async function POST(request: Request) {
     // Save INBOUND message
     await saveMessageToDB(from, employeeName, textBody, 'inbound');
 
+    // ── CHECK FOR PENDING STATUS REQUEST ──────────────────────────
+    let handledAsStatusRequest = false;
+    try {
+      const phoneLast10 = cleanFrom.slice(-10);
+      console.log(`[whatsapp webhook bg-worker] Looking for pending status request with phone matching: %${phoneLast10}%`);
+      
+      const { data: pendingRequests, error: pendingError } = await supabase
+        .from('status_requests')
+        .select('*')
+        .eq('status', 'sent')
+        .ilike('employee_phone', `%${phoneLast10}%`)
+        .order('sent_at', { ascending: false })
+        .limit(1);
+
+      if (pendingError) {
+        console.error(`[whatsapp webhook bg-worker] ❌ Error querying status_requests:`, pendingError);
+      }
+      
+      console.log(`[whatsapp webhook bg-worker] Found ${pendingRequests?.length || 0} pending requests`);
+
+      if (pendingRequests && pendingRequests.length > 0) {
+        const req = pendingRequests[0];
+        const now = new Date().toISOString();
+        
+        console.log(`[whatsapp webhook bg-worker] Updating request ${req.id} for ${req.employee_name} with text: "${textBody}"`);
+
+        // Update the status request with the reply
+        const { error: updateError } = await supabase
+          .from('status_requests')
+          .update({
+            status: 'replied',
+            reply_time: now,
+            update_text: textBody,
+          })
+          .eq('id', req.id);
+
+        if (updateError) {
+          console.error(`[whatsapp webhook bg-worker] ❌ Error updating status_request:`, updateError);
+        } else {
+          console.log(`[whatsapp webhook bg-worker] ✓ Successfully updated status_request ${req.id} to replied`);
+        }
+
+        console.log(`[whatsapp webhook bg-worker] ✓ Status update captured from ${employeeName} for request ${req.id}`);
+
+        // Send acknowledgment
+        await replyToWhatsApp(
+          from,
+          employeeName,
+          `✅ Thank you ${employeeName}! Your status update has been recorded.\n\n📋 *Project:* ${req.project || 'General'}\n📝 *Your Update:* ${textBody}\n\nYour manager can now see this update on the dashboard.`
+        );
+
+        // ── AUTO-GENERATE PROJECT REPORT (EXACT RESPONSE) ─────────
+        try {
+          const docId = `doc-report-${Date.now()}`;
+          const reportBody = `# Project Status Update\n\n**Employee:** ${employeeName}\n**Project:** ${req.project || 'General'}\n**Department:** ${req.department || '--'}\n\n---\n\n${textBody}`;
+          
+          const newDoc = {
+            id: docId,
+            type: 'doc',
+            title: `Status Report: ${req.project || 'General'} - ${employeeName}`,
+            body: reportBody,
+            createdAt: new Date().toISOString().split('T')[0],
+            updatedAt: new Date().toISOString().split('T')[0],
+            fields: {
+              author: employeeName,
+              project: req.project || 'General'
+            }
+          };
+
+          // Load fresh documents to avoid race conditions
+          const { data: currentDocData } = await supabase.from('app_data').select('data').eq('key', 'documents').single();
+          const allDocs = currentDocData?.data || [];
+          allDocs.push(newDoc);
+          
+          await supabase.from('app_data').upsert({ key: 'documents', data: allDocs });
+          await supabase.from('status_requests').update({ report_id: docId }).eq('id', req.id);
+          
+          console.log(`[whatsapp webhook bg-worker] ✓ Direct report generated and saved as ${docId}`);
+        } catch (err) {
+          console.error('[whatsapp webhook bg-worker] Failed to generate direct report:', err);
+        }
+
+        handledAsStatusRequest = true;
+      }
+    } catch (statusErr) {
+      console.warn('[whatsapp webhook bg-worker] Error checking status requests:', statusErr);
+      // Continue with normal processing if status check fails
+    }
+
     if (!employee) {
-      console.log(`[whatsapp webhook] Phone number ${from} not associated with any employee. Responding as generic AI.`);
+      console.log(`[whatsapp webhook bg-worker] Phone number ${from} not associated with any employee. Responding as generic AI.`);
       const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey) {
         try {
@@ -124,22 +210,22 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
             headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } })
           });
-          
-          const payload = await apiResponse.json();
-          const answer = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-          
+
+          const responsePayload = await apiResponse.json();
+          const answer = responsePayload.candidates?.[0]?.content?.parts?.[0]?.text;
+
           if (answer) {
-             await replyToWhatsApp(from, employeeName, answer);
-             return NextResponse.json({ success: true }, { status: 200 });
+            await replyToWhatsApp(from, employeeName, answer);
+            return;
           }
-        } catch (error) { console.error('[whatsapp webhook] Error calling Gemini:', error); }
+        } catch (error) { console.error('[whatsapp webhook bg-worker] Error calling Gemini:', error); }
       }
 
       await replyToWhatsApp(from, employeeName, `Hi! I am Enxt Brain. Your phone number is not currently associated with any employee record in our system.`);
-      return NextResponse.json({ success: true }, { status: 200 });
+      return;
     }
 
-    console.log(`[whatsapp webhook] Matched employee: ${employeeName}`);
+    console.log(`[whatsapp webhook bg-worker] Matched employee: ${employeeName}`);
 
     // Load tasks from Supabase
     let employeeTasks: any[] = [];
@@ -148,12 +234,12 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
         .from('tasks')
         .select('*')
         .contains('assigned_employee_ids', [employee.id]);
-        
+
       if (tasksData) {
         employeeTasks = tasksData;
       }
     } catch (e) {
-      console.warn("[whatsapp webhook] Could not load tasks from Supabase", e);
+      console.warn("[whatsapp webhook bg-worker] Could not load tasks from Supabase", e);
     }
 
     const lowerText = textBody.toLowerCase();
@@ -170,15 +256,20 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
     }
 
     if (!newStatus) {
-      console.log(`[whatsapp webhook] No status match in text "${textBody}". Forwarding to AI chatbot.`);
+      if (handledAsStatusRequest) {
+        // If it was already handled as a status request, don't fallback to the AI bot.
+        return;
+      }
+      
+      console.log(`[whatsapp webhook bg-worker] No status match in text "${textBody}". Forwarding to AI chatbot.`);
       const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey) {
         try {
           const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
-          const tasksContext = employeeTasks.length > 0 
+          const tasksContext = employeeTasks.length > 0
             ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status})`).join('\n')
             : 'No active tasks.';
-            
+
           const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to an employee named ${employeeName}. 
 Their current tasks are:
 ${tasksContext}
@@ -191,24 +282,24 @@ Reply to them in a helpful, professional, and concise manner. If they are asking
             headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } })
           });
-          
-          const payload = await apiResponse.json();
-          const answer = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-          
+
+          const responsePayload = await apiResponse.json();
+          const answer = responsePayload.candidates?.[0]?.content?.parts?.[0]?.text;
+
           if (answer) {
-             await replyToWhatsApp(from, employeeName, answer);
-             return NextResponse.json({ success: true }, { status: 200 });
+            await replyToWhatsApp(from, employeeName, answer);
+            return;
           }
-        } catch (error) { console.error('[whatsapp webhook] Error calling Gemini:', error); }
+        } catch (error) { console.error('[whatsapp webhook bg-worker] Error calling Gemini:', error); }
       }
-      
+
       await replyToWhatsApp(from, employeeName, `Hi ${employeeName}! I couldn't understand that command. Please reply with one of these keywords to update your task status:\n\n- *Completed* (or Done)\n- *In Progress*\n- *Blocked*\n- *Pending*`);
-      return NextResponse.json({ success: true }, { status: 200 });
+      return;
     }
 
     if (employeeTasks.length === 0) {
       await replyToWhatsApp(from, employeeName, `You have no tasks assigned to you right now.`);
-      return NextResponse.json({ success: true }, { status: 200 });
+      return;
     }
 
     let taskToUpdate = employeeTasks.find((t: any) => {
@@ -222,17 +313,17 @@ Reply to them in a helpful, professional, and concise manner. If they are asking
 
     if (taskToUpdate) {
       const oldStatus = taskToUpdate.status;
-      
+
       // Save tasks to Supabase
       const { error: updateError } = await supabase
         .from('tasks')
         .update({ status: newStatus })
         .eq('id', taskToUpdate.id);
-        
+
       if (updateError) {
-        console.error("[whatsapp webhook] Failed to update task in Supabase", updateError);
+        console.error("[whatsapp webhook bg-worker] Failed to update task in Supabase", updateError);
       } else {
-        console.log(`[whatsapp webhook] Updated task "${taskToUpdate.title}" from ${oldStatus} to ${newStatus}`);
+        console.log(`[whatsapp webhook bg-worker] Updated task "${taskToUpdate.title}" from ${oldStatus} to ${newStatus}`);
       }
 
       let statusIcon = '⏳';
@@ -243,7 +334,22 @@ Reply to them in a helpful, professional, and concise manner. If they are asking
       const replyMsg = `Task status updated successfully!\n\n📋 *Task:* ${taskToUpdate.title}\n${statusIcon} *New Status:* ${newStatus}`;
       await replyToWhatsApp(from, employeeName, replyMsg);
     }
+  } catch (error) {
+    console.error('[whatsapp webhook bg-worker] Error processing background worker logic:', error);
+  }
+}
 
+export async function POST(request: Request) {
+  try {
+    const payload = await request.json();
+    console.log('[whatsapp webhook] Payload received:', JSON.stringify(payload, null, 2));
+
+    // Defer the heavy execution logic
+    processWebhookPayload(payload).catch(err => {
+      console.error('[whatsapp webhook bg-worker] Unhandled error:', err);
+    });
+
+    // Respond with 200 OK instantly to Meta's server
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('[whatsapp webhook] Error handling POST request:', error);

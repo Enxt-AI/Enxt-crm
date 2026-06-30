@@ -26,7 +26,8 @@ import {
   UserPlus,
   X,
   CreditCard,
-  ClipboardList
+  ClipboardList,
+  Activity
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +40,7 @@ import TaskAssignmentModal from "./TaskAssignmentModal";
 // Finance view component
 import FinanceView from "./FinanceView";
 import WhatsAppChatView from "./WhatsAppChatView";
+import StatusDashboardView from "./StatusDashboardView";
 
 
 import { brainDocuments } from "../lib/demo-documents";
@@ -149,6 +151,7 @@ export default function EnxtBrainApp() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [dbSyncStatus, setDbSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" | "loading" } | null>(null);
+  const [activeTaskTab, setActiveTaskTab] = useState<"tasks" | "status">("tasks");
 
   const showToast = (message: string, type: "success" | "error" | "loading" = "success") => {
     setGlobalToast({ message, type });
@@ -693,28 +696,72 @@ export default function EnxtBrainApp() {
             )}
             
             {activeView === "tasks" && (
-              <>
-                <EmployeeTasksView 
-                  key={taskRefreshKey} 
-                  employees={employees} 
-                  onAssignClick={() => setShowTaskModal(true)}
-                  onShowToast={(message: string, type: "success" | "error") => {
-                    setGlobalToast({ message, type });
-                    setTimeout(() => setGlobalToast(null), 5000);
-                  }}
-                />
+              <div className="flex flex-col h-full">
+                <div className="border-b border-gray-200" style={{ borderColor: 'var(--line)' }}>
+                  <div className="flex gap-6 px-6 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTaskTab("tasks")}
+                      className={`pb-3 font-semibold text-sm border-b-2 transition-colors ${
+                        activeTaskTab === "tasks" 
+                          ? "border-[var(--accent)] text-[var(--accent)]" 
+                          : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
+                      }`}
+                    >
+                      📋 Task Board
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTaskTab("status")}
+                      className={`pb-3 font-semibold text-sm border-b-2 transition-colors ${
+                        activeTaskTab === "status" 
+                          ? "border-[var(--accent)] text-[var(--accent)]" 
+                          : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
+                      }`}
+                    >
+                      📊 Status Dashboard
+                    </button>
+                  </div>
+                </div>
 
-                <TaskAssignmentModal 
-                  employees={employees} 
-                  onTaskCreated={handleTaskCreated} 
-                  open={showTaskModal}
-                  setOpen={setShowTaskModal}
-                  onShowToast={(message: string, type: "success" | "error") => {
-                    setGlobalToast({ message, type });
-                    setTimeout(() => setGlobalToast(null), 5000);
-                  }}
-                />
-              </>
+                <div className="flex-1 overflow-auto">
+                  {activeTaskTab === "tasks" ? (
+                    <>
+                      <EmployeeTasksView 
+                        key={taskRefreshKey} 
+                        employees={employees} 
+                        onAssignClick={() => setShowTaskModal(true)}
+                        onShowToast={(message: string, type: "success" | "error") => {
+                          setGlobalToast({ message, type });
+                          setTimeout(() => setGlobalToast(null), 5000);
+                        }}
+                      />
+
+                      <TaskAssignmentModal 
+                        employees={employees} 
+                        onTaskCreated={handleTaskCreated} 
+                        open={showTaskModal}
+                        setOpen={setShowTaskModal}
+                        onShowToast={(message: string, type: "success" | "error") => {
+                          setGlobalToast({ message, type });
+                          setTimeout(() => setGlobalToast(null), 5000);
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <StatusDashboardView 
+                      onViewReport={(docId) => {
+                        const doc = documents.find(d => d.id === docId);
+                        if (doc) {
+                          selectDocument(doc);
+                        } else {
+                          showToast("Report not found in documents", "error");
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
             )}
 
             {activeView === "whatsapp" && (
@@ -2119,7 +2166,7 @@ function DocumentsView({
           <StatusBadge tone="neutral">{selectedDocument.status}</StatusBadge>
         </div>
         <div className="doc-tags">
-          {selectedDocument.tags.map((tag) => (
+          {selectedDocument.tags?.map((tag) => (
             <span key={tag}>{tag}</span>
           ))}
         </div>

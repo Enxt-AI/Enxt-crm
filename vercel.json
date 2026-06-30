@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/status-requests/send?schedule=morning",
+      "schedule": "30 3 * * 1-5"
+    },
+    {
+      "path": "/api/status-requests/send?schedule=midday",
+      "schedule": "30 7 * * 1-5"
+    },
+    {
+      "path": "/api/status-requests/send?schedule=evening",
+      "schedule": "30 12 * * 1-5"
+    },
+    {
+      "path": "/api/status-requests/check-timeouts",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

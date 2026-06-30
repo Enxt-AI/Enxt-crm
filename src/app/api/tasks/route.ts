@@ -11,6 +11,7 @@ export interface Task {
   title: string;
   description: string;
   dueDate: string; // ISO date string
+  dueTime?: string; // HH:MM time string
   status: TaskStatus;
   assignedEmployeeIds: string[]; // supports multiple assignees
 }
@@ -22,6 +23,7 @@ function mapRowToTask(row: any): Task {
     title: row.title,
     description: row.description,
     dueDate: row.due_date,
+    dueTime: row.due_time || '',
     status: row.status as TaskStatus,
     assignedEmployeeIds: row.assigned_employee_ids || [],
   };
@@ -53,7 +55,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, description, dueDate, assignedEmployeeIds, status } = body;
+    const { title, description, dueDate, dueTime, assignedEmployeeIds, status } = body;
 
     // Normalise: accept old single-id payload too
     let ids: string[] = [];
@@ -68,6 +70,7 @@ export async function POST(request: Request) {
       title,
       description,
       due_date: dueDate,
+      due_time: dueTime || null,
       status: status || 'Pending',
       assigned_employee_ids: ids,
     };
@@ -98,6 +101,7 @@ export async function PATCH(request: Request) {
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
+    if (updates.dueTime !== undefined) dbUpdates.due_time = updates.dueTime;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.assignedEmployeeIds !== undefined) dbUpdates.assigned_employee_ids = updates.assignedEmployeeIds;
 

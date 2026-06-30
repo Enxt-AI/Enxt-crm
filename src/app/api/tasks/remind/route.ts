@@ -10,6 +10,7 @@ interface Task {
   title: string;
   description: string;
   dueDate: string;
+  dueTime?: string;
   status: string;
   assignedEmployeeIds: string[];
 }
@@ -61,6 +62,7 @@ function buildMessage(
   const formattedDate = task.dueDate
     ? new Date(task.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : 'No due date';
+  const timeStr = task.dueTime ? ` at ${task.dueTime}` : '';
 
   const icon = urgency === 'overdue' ? '🚨' : urgency === 'due-today' ? '⏰' : '📅';
   const heading =
@@ -75,7 +77,7 @@ function buildMessage(
     `Hi ${employeeName}! Here's a reminder about your task:\n\n` +
     `📋 *Title:* ${task.title}\n` +
     `📝 *Description:* ${task.description || 'No description provided.'}\n` +
-    `📆 *Due Date:* ${formattedDate}\n` +
+    `📆 *Due Date:* ${formattedDate}${timeStr}\n` +
     `🔖 *Current Status:* ${task.status}\n\n` +
     (urgency === 'overdue'
       ? `⚠️ This task is *overdue*. Please update the status or reach out to your manager.`
@@ -165,6 +167,7 @@ export async function GET(request: Request) {
       title: row.title,
       description: row.description,
       dueDate: row.due_date,
+      dueTime: row.due_time || '',
       status: row.status,
       assignedEmployeeIds: row.assigned_employee_ids || [],
     }));

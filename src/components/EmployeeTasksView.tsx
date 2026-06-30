@@ -7,6 +7,7 @@ interface Task {
   title: string;
   description: string;
   dueDate: string;
+  dueTime?: string;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Blocked';
   assignedEmployeeIds: string[];
 }
@@ -302,6 +303,11 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
                         {task.dueDate
                           ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                           : 'No due date'}
+                        {task.dueTime && (
+                          <span style={{ marginLeft: '6px', color: 'var(--muted)', fontWeight: 500, fontSize: '0.75rem' }}>
+                            at {task.dueTime}
+                          </span>
+                        )}
                       </span>
                     </div>
                     <div>
@@ -345,6 +351,7 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
                           title: task.title,
                           description: task.description,
                           dueDate: task.dueDate,
+                          dueTime: task.dueTime,
                           status: task.status,
                           assignedEmployeeIds: task.assignedEmployeeIds,
                         });
