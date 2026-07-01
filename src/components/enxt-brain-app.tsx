@@ -152,6 +152,7 @@ export default function EnxtBrainApp() {
   const [dbSyncStatus, setDbSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" | "loading" } | null>(null);
   const [activeTaskTab, setActiveTaskTab] = useState<"tasks" | "status">("tasks");
+  const [hoveredTaskTab, setHoveredTaskTab] = useState<"tasks" | "status" | null>(null);
 
   const showToast = (message: string, type: "success" | "error" | "loading" = "success") => {
     setGlobalToast({ message, type });
@@ -697,27 +698,70 @@ export default function EnxtBrainApp() {
             
             {activeView === "tasks" && (
               <div className="flex flex-col h-full">
-                <div className="border-b border-gray-200" style={{ borderColor: 'var(--line)' }}>
-                  <div className="flex gap-6 px-6 pt-4">
+                <div style={{ padding: '16px 24px', background: 'var(--panel)', borderBottom: '1px solid var(--line)' }}>
+                  <div style={{ 
+                    display: 'inline-flex', 
+                    background: 'rgba(0, 0, 0, 0.03)', 
+                    padding: '4px', 
+                    borderRadius: '10px', 
+                    border: '1px solid var(--line)',
+                    gap: '4px'
+                  }}>
                     <button
                       type="button"
                       onClick={() => setActiveTaskTab("tasks")}
-                      className={`pb-3 font-semibold text-sm border-b-2 transition-colors ${
-                        activeTaskTab === "tasks" 
-                          ? "border-[var(--accent)] text-[var(--accent)]" 
-                          : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
-                      }`}
+                      onMouseEnter={() => setHoveredTaskTab("tasks")}
+                      onMouseLeave={() => setHoveredTaskTab(null)}
+                      style={{
+                        background: activeTaskTab === "tasks" 
+                          ? 'var(--panel)' 
+                          : hoveredTaskTab === "tasks" 
+                            ? 'rgba(0, 0, 0, 0.05)' 
+                            : 'transparent',
+                        border: 'none',
+                        color: activeTaskTab === "tasks" ? 'var(--ink)' : 'var(--muted)',
+                        padding: '8px 18px',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        borderRadius: '8px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: activeTaskTab === "tasks" ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                        transform: hoveredTaskTab === "tasks" && activeTaskTab !== "tasks" ? 'scale(1.02) translateY(-0.5px)' : 'none',
+                        outline: 'none'
+                      }}
                     >
                       📋 Task Board
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTaskTab("status")}
-                      className={`pb-3 font-semibold text-sm border-b-2 transition-colors ${
-                        activeTaskTab === "status" 
-                          ? "border-[var(--accent)] text-[var(--accent)]" 
-                          : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
-                      }`}
+                      onMouseEnter={() => setHoveredTaskTab("status")}
+                      onMouseLeave={() => setHoveredTaskTab(null)}
+                      style={{
+                        background: activeTaskTab === "status" 
+                          ? 'var(--panel)' 
+                          : hoveredTaskTab === "status" 
+                            ? 'rgba(0, 0, 0, 0.05)' 
+                            : 'transparent',
+                        border: 'none',
+                        color: activeTaskTab === "status" ? 'var(--ink)' : 'var(--muted)',
+                        padding: '8px 18px',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        borderRadius: '8px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: activeTaskTab === "status" ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                        transform: hoveredTaskTab === "status" && activeTaskTab !== "status" ? 'scale(1.02) translateY(-0.5px)' : 'none',
+                        outline: 'none'
+                      }}
                     >
                       📊 Status Dashboard
                     </button>

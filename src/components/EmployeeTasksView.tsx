@@ -184,15 +184,17 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '8px',
               height: '38px',
-              padding: '0 14px',
+              padding: '0 16px',
               borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
               opacity: pendingCount === 0 ? 0.5 : 1,
             }}
             title="Send WhatsApp reminders for all overdue / due-today / due-tomorrow tasks"
           >
-            <BellRing size={15} />
+            <BellRing size={14} />
             {sendingAll ? 'Sending…' : 'Send Reminders'}
           </button>
 
@@ -201,9 +203,18 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
               className="primary-button"
               onClick={onAssignClick}
               type="button"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 16px', borderRadius: '8px' }}
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                height: '38px', 
+                padding: '0 16px', 
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 600
+              }}
             >
-              <Plus size={16} /> Assign Task
+              <Plus size={14} /> Assign Task
             </button>
           )}
         </div>

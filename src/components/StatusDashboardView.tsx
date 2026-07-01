@@ -98,25 +98,7 @@ export default function StatusDashboardView({ onViewReport, onShowToast }: Statu
     return () => clearInterval(interval);
   }, [fetchRequests]);
 
-  // Local Auto-Scheduler
-  useEffect(() => {
-    const autoScheduleInterval = setInterval(() => {
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const istTime = new Date(now.getTime() + istOffset);
-      const hours = istTime.getUTCHours();
-      const minutes = istTime.getUTCMinutes();
-      const seconds = istTime.getUTCSeconds();
 
-      // Trigger precisely on the hour for 10 AM, 1 PM, and 6 PM IST
-      if ((hours === 10 || hours === 13 || hours === 18) && minutes === 0 && seconds === 0) {
-        console.log("[StatusDashboard] Auto-Scheduler triggered!");
-        sendNow();
-      }
-    }, 1000); // Check every second to hit the exact 0th second
-
-    return () => clearInterval(autoScheduleInterval);
-  }, []);
 
   // Supabase Realtime subscription
   useEffect(() => {

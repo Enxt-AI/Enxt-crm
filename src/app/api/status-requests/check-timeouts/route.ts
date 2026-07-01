@@ -231,16 +231,33 @@ export async function GET(request: Request) {
 
     if (targetSchedule) {
       try {
-        const requestUrl = new URL(request.url);
-        const origin = requestUrl.origin;
-        console.log(`[check-timeouts] Triggering check-in send for ${targetSchedule} at ${origin}`);
-        
-        const sendRes = await fetch(`${origin}/api/status-requests/send?schedule=${targetSchedule}`);
-        const sendData = await sendRes.json();
-        scheduleTriggered = true;
-        scheduleMessage = sendData.message || 'Triggered check-in API';
+        const todayIST = istNow.toISOString().split('T')[0];
+        // Check if requests for this schedule today already exist before triggering send
+        const { data: existing, error: existError } = await supabase
+          .from('status_requests')
+          .select('id')
+          .eq('schedule_label', targetSchedule)
+          .gte('scheduled_time', `${todayIST}T00:00:00+05:30`)
+          .lte('scheduled_time', `${todayIST}T23:59:59+05:30`)
+          .limit(1);
+
+        if (existError) throw existError;
+
+        if (existing && existing.length > 0) {
+          console.log(`[check-timeouts] Status requests for ${targetSchedule} today have already been sent. Skipping trigger.`);
+          scheduleMessage = `Already sent today (${existing.length} requests exist)`;
+        } else {
+          const requestUrl = new URL(request.url);
+          const origin = requestUrl.origin;
+          console.log(`[check-timeouts] Triggering check-in send for ${targetSchedule} at ${origin}`);
+          
+          const sendRes = await fetch(`${origin}/api/status-requests/send?schedule=${targetSchedule}`);
+          const sendData = await sendRes.json();
+          scheduleTriggered = true;
+          scheduleMessage = sendData.message || 'Triggered check-in API';
+        }
       } catch (err: any) {
-        console.error(`[check-timeouts] Failed to trigger check-in API:`, err);
+        console.error(`[check-timeouts] Failed to check or trigger check-in API:`, err);
         scheduleMessage = `Error: ${err.message}`;
       }
     }
