@@ -22,8 +22,8 @@ function detectSchedule(): Schedule {
   const istOffset = 5.5 * 60 * 60 * 1000;
   const istHour = new Date(now.getTime() + istOffset).getUTCHours();
 
-  if (istHour < 11) return 'morning';
-  if (istHour < 16) return 'midday';
+  if (istHour >= 10 && istHour < 13) return 'morning';
+  if (istHour >= 13 && istHour < 18) return 'midday';
   return 'evening';
 }
 
