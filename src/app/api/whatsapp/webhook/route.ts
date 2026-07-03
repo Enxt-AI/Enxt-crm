@@ -275,7 +275,19 @@ Their current tasks are:
 ${tasksContext}
 
 The employee sent you this message: "${textBody}"
-Reply to them in a helpful, professional, and concise manner. If they are asking about their tasks, help them. If they want to update a task status, let them know they can reply with 'Completed', 'In Progress', 'Blocked', or 'Pending'.`;
+
+Determine if the employee is requesting a deadline extension or a time change for a task.
+If they are NOT requesting a deadline extension or time change, reply to their message in a helpful, conversational manner.
+
+If they ARE requesting a deadline extension or time change, you must return a raw JSON object ONLY. Do not wrap it in markdown code blocks, do not add backticks, and do not add any other text. The JSON structure must be:
+{
+  "isTimeChangeRequest": true,
+  "taskTitle": "<exact title of the task from the list above, or the closest match>",
+  "requestedDate": "<resolved target date in YYYY-MM-DD format based on relative terms relative to today's date ${new Date().toISOString().split('T')[0]}>",
+  "requestedTime": "<resolved target time in HH:MM format, or '18:00' if not specified>",
+  "reason": "<reason given by the employee, or 'No reason provided'>"
+}
+`;
 
           const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
             method: "POST",
@@ -284,10 +296,65 @@ Reply to them in a helpful, professional, and concise manner. If they are asking
           });
 
           const responsePayload = await apiResponse.json();
-          const answer = responsePayload.candidates?.[0]?.content?.parts?.[0]?.text;
+          const answer = responsePayload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+          if (answer.startsWith('{')) {
+            try {
+              const parsed = JSON.parse(answer);
+              if (parsed.isTimeChangeRequest) {
+                // Find matched task
+                const matchedTask = employeeTasks.find((t: any) => 
+                  t.title.toLowerCase().includes(parsed.taskTitle.toLowerCase()) ||
+                  parsed.taskTitle.toLowerCase().includes(t.title.toLowerCase())
+                ) || employeeTasks[0]; // fallback to first task if mismatch
+
+                if (matchedTask) {
+                  // Save request
+                  const { data: currentData } = await supabase
+                    .from('app_data')
+                    .select('data')
+                    .eq('key', 'time_change_requests')
+                    .single();
+
+                  const changeRequests = currentData?.data || [];
+                  const newRequest = {
+                    id: `tcr-${Date.now()}`,
+                    taskId: matchedTask.id,
+                    taskTitle: matchedTask.title,
+                    employeeId: employee.id,
+                    employeeName: employeeName,
+                    requestedDueDate: parsed.requestedDate,
+                    requestedDueTime: parsed.requestedTime,
+                    reason: parsed.reason,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                  };
+                  changeRequests.push(newRequest);
+
+                  await supabase
+                    .from('app_data')
+                    .upsert({ key: 'time_change_requests', data: changeRequests });
+
+                  // Send confirmation to employee
+                  await replyToWhatsApp(
+                    from,
+                    employeeName,
+                    `📥 *Extension Request Submitted!*\n\nI have requested a deadline change for your task:\n📋 *Task:* ${matchedTask.title}\n📅 *Requested Deadline:* ${parsed.requestedDate} at ${parsed.requestedTime}\n💬 *Reason:* ${parsed.reason}\n\nYour manager has been notified and will review your request.`
+                  );
+                  return;
+                }
+              }
+            } catch (jsonErr) {
+              console.warn('[whatsapp webhook] Failed to parse JSON request from Gemini:', jsonErr);
+            }
+          }
 
           if (answer) {
-            await replyToWhatsApp(from, employeeName, answer);
+            let replyText = answer;
+            if (answer.startsWith('{')) {
+              replyText = `Hi ${employeeName}! I couldn't process your request. Please ask your manager directly to change your task deadline or try again with a simpler request.`;
+            }
+            await replyToWhatsApp(from, employeeName, replyText);
             return;
           }
         } catch (error) { console.error('[whatsapp webhook bg-worker] Error calling Gemini:', error); }

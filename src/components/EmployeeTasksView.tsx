@@ -42,32 +42,170 @@ function isDueToday(dueDate: string, status: string): boolean {
   return due.getTime() === today.getTime();
 }
 
+function Stopwatch({ startTime }: { startTime: string }) {
+  const [elapsed, setElapsed] = useState('');
+
+  useEffect(() => {
+    const start = new Date(startTime).getTime();
+    
+    const update = () => {
+      const now = Date.now();
+      const diff = Math.max(0, now - start);
+      
+      const secs = Math.floor((diff / 1000) % 60);
+      const mins = Math.floor((diff / 60000) % 60);
+      const hrs = Math.floor(diff / 3600000);
+      
+      const pad = (num: number) => String(num).padStart(2, '0');
+      setElapsed(`${pad(hrs)}:${pad(mins)}:${pad(secs)}`);
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return (
+    <span style={{ 
+      display: 'inline-flex', 
+      alignItems: 'center', 
+      gap: '4px', 
+      background: 'rgba(16, 185, 129, 0.1)', 
+      color: '#10b981', 
+      padding: '2px 6px', 
+      borderRadius: '4px',
+      fontSize: '0.7rem',
+      fontWeight: 700,
+      fontFamily: 'monospace',
+      marginLeft: '6px'
+    }}>
+      ⏱️ {elapsed}
+    </span>
+  );
+}
+
 export default function EmployeeTasksView({ employees, onAssignClick, onShowToast }: Props) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [changeRequests, setChangeRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [sendingAll, setSendingAll] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskData | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       const res = await fetch(`/api/tasks?_t=${Date.now()}`);
       const data = await res.json();
+      
+      const reqRes = await fetch(`/api/time-change-requests?_t=${Date.now()}`);
+      const reqData = await reqRes.json();
+      
       // Migrate old tasks that may still have single assignedEmployeeId
       const migrated = data.map((t: any) => ({
         ...t,
         assignedEmployeeIds: t.assignedEmployeeIds ?? (t.assignedEmployeeId ? [t.assignedEmployeeId] : []),
       }));
       setTasks(migrated);
+      setChangeRequests(reqData || []);
+    } catch {
+      onShowToast?.('Failed to load tasks.', 'error');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
+    }
+  };
+
+  const approveTimeChange = async (req: any) => {
+    try {
+      // 1. Update task deadline
+      await fetch('/api/tasks', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: req.taskId,
+          updates: {
+            dueDate: req.requestedDueDate,
+            dueTime: req.requestedDueTime
+          }
+        })
+      });
+
+      // 2. Update status of request to 'approved' and start stopwatch
+      await fetch('/api/time-change-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: req.id,
+          status: 'approved',
+          timerStartedAt: new Date().toISOString()
+        })
+      });
+
+      // 3. Send WhatsApp notification
+      const emp = employees.find(e => e.id === req.employeeId);
+      const phone = emp?.fields?.phone;
+      if (phone) {
+        await fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: phone,
+            body: `🔔 *Deadline Extension Approved!*\n\nYour request for task "${req.taskTitle}" has been approved.\n📅 *New Deadline:* ${req.requestedDueDate} at ${req.requestedDueTime}\n⏱️ Your stopwatch has started on the dashboard!`
+          })
+        }).catch(err => console.error("Failed to send approval WhatsApp:", err));
+      }
+
+      onShowToast?.("Extension request approved!", "success");
+      load();
+    } catch (err) {
+      console.error(err);
+      onShowToast?.("Failed to approve request.", "error");
+    }
+  };
+
+  const rejectTimeChange = async (req: any) => {
+    try {
+      // 1. Update status of request to 'rejected'
+      await fetch('/api/time-change-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: req.id,
+          status: 'rejected'
+        })
+      });
+
+      // 2. Send WhatsApp notification
+      const emp = employees.find(e => e.id === req.employeeId);
+      const phone = emp?.fields?.phone;
+      if (phone) {
+        await fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: phone,
+            body: `❌ *Deadline Extension Rejected*\n\nYour request for task "${req.taskTitle}" has been rejected. Please complete the work by the original deadline.`
+          })
+        }).catch(err => console.error("Failed to send rejection WhatsApp:", err));
+      }
+
+      onShowToast?.("Extension request rejected.", "success");
+      load();
+    } catch (err) {
+      console.error(err);
+      onShowToast?.("Failed to reject request.", "error");
     }
   };
 
   useEffect(() => {
-    load();
+    load(true);
+
+    const interval = setInterval(() => {
+      load(false);
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const deleteTask = async (id: string) => {
@@ -220,6 +358,88 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
         </div>
       </div>
 
+      {/* Pending Extension Requests Panel */}
+      {(() => {
+        const pending = changeRequests.filter(r => r.status === 'pending');
+        if (pending.length === 0) return null;
+
+        return (
+          <div style={{
+            background: 'var(--panel)',
+            border: '1px solid var(--line)',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '25px',
+            boxShadow: 'var(--shadow)'
+          }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)' }}>
+              ⏳ Pending Extension Requests
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {pending.map(req => (
+                <div key={req.id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}>
+                  <div>
+                    <strong style={{ color: 'var(--ink)', fontSize: '0.9rem' }}>{req.employeeName}</strong>
+                    <span style={{ color: 'var(--muted)', fontSize: '0.82rem', marginLeft: '8px' }}>
+                      requested extension for task <strong>{req.taskTitle}</strong>
+                    </span>
+                    <div style={{ marginTop: '4px', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                      📅 New Deadline: <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{req.requestedDueDate} {req.requestedDueTime || ''}</span>
+                      <span style={{ marginLeft: '12px', fontStyle: 'italic' }}>Reason: "{req.reason}"</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      className="primary-button"
+                      onClick={() => approveTimeChange(req)}
+                      style={{
+                        height: '32px',
+                        padding: '0 12px',
+                        fontSize: '0.8rem',
+                        borderRadius: '6px',
+                        background: '#10b981',
+                        border: 'none',
+                        color: '#fff',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="secondary-button"
+                      onClick={() => rejectTimeChange(req)}
+                      style={{
+                        height: '32px',
+                        padding: '0 12px',
+                        fontSize: '0.8rem',
+                        borderRadius: '6px',
+                        borderColor: '#e53e3e',
+                        color: '#e53e3e',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {tasks.length === 0 ? (
         <div className="empty-state" style={{ padding: '40px 20px' }}>
           <strong>No tasks assigned yet.</strong>
@@ -325,13 +545,32 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
                       <span style={{ display: 'block', fontWeight: 700, letterSpacing: '0.05em', color: '#888b86', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '4px' }}>
                         ASSIGNEES
                       </span>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {assigneeNames.length > 0 ? (
-                          assigneeNames.map((name, i) => (
-                            <span key={i} className="assignee-pill" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
-                              {name}
-                            </span>
-                          ))
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                        {task.assignedEmployeeIds && task.assignedEmployeeIds.length > 0 ? (
+                          task.assignedEmployeeIds.map((empId) => {
+                            const emp = employees.find((e) => e.id === empId);
+                            const name = emp?.fields?.name || emp?.title || empId;
+                            
+                            // Check if there is an approved time change request for this task and employee
+                            const activeRequest = changeRequests.find(r => 
+                              r.taskId === task.id && 
+                              r.employeeId === empId && 
+                              r.status === 'approved' && 
+                              r.timerStartedAt
+                            );
+
+                            return (
+                              <span key={empId} className="assignee-pill" style={{ 
+                                fontSize: '0.72rem', 
+                                padding: '2px 8px',
+                                display: 'inline-flex',
+                                alignItems: 'center'
+                              }}>
+                                {name}
+                                {activeRequest && <Stopwatch startTime={activeRequest.timerStartedAt} />}
+                              </span>
+                            );
+                          })
                         ) : (
                           <span style={{ color: 'var(--muted)', fontSize: '0.82rem' }}>Unassigned</span>
                         )}
