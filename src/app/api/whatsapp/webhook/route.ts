@@ -67,6 +67,16 @@ function addTimeToDeadline(originalDateStr: string, originalTimeStr: string | nu
   };
 }
 
+function cleanAndParseJSON(text: string) {
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(json)?\s*/i, '');
+    cleaned = cleaned.replace(/\s*```$/, '');
+  }
+  cleaned = cleaned.trim();
+  return JSON.parse(cleaned);
+}
+
 async function saveMessageToDB(from: string, employeeName: string, text: string, type: 'inbound' | 'outbound') {
   try {
     const { data, error } = await supabase
@@ -276,16 +286,19 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
     }
 
     const lowerText = textBody.toLowerCase();
+    const isExtensionRequestText = /\b(extend|extension|time\s*change|delay|more\s*time|extra\s*time|hours|days)\b/i.test(lowerText);
     let newStatus: 'Pending' | 'In Progress' | 'Completed' | 'Blocked' | null = null;
 
-    if (/\b(completed|done|complete|finished|check)\b/i.test(lowerText)) {
-      newStatus = 'Completed';
-    } else if (/\b(in progress|progress|started|doing|run)\b/i.test(lowerText)) {
-      newStatus = 'In Progress';
-    } else if (/\b(pending|todo|hold|wait)\b/i.test(lowerText)) {
-      newStatus = 'Pending';
-    } else if (/\b(blocked|stuck|stop|cannot)\b/i.test(lowerText)) {
-      newStatus = 'Blocked';
+    if (!isExtensionRequestText) {
+      if (/\b(completed|done|complete|finished|check)\b/i.test(lowerText)) {
+        newStatus = 'Completed';
+      } else if (/\b(in progress|progress|started|doing|run)\b/i.test(lowerText)) {
+        newStatus = 'In Progress';
+      } else if (/\b(pending|todo|hold|wait)\b/i.test(lowerText)) {
+        newStatus = 'Pending';
+      } else if (/\b(blocked|stuck|stop|cannot)\b/i.test(lowerText)) {
+        newStatus = 'Blocked';
+      }
     }
 
     if (!newStatus) {
@@ -331,12 +344,17 @@ If they ARE requesting a deadline extension, you must return a raw JSON object O
           const responsePayload = await apiResponse.json();
           const answer = responsePayload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
-          if (answer.startsWith('{')) {
+          let parsed: any = null;
+          try {
+            parsed = cleanAndParseJSON(answer);
+          } catch (e) {
+            // Not valid JSON
+          }
+
+          if (parsed && parsed.isTimeChangeRequest) {
             try {
-              const parsed = JSON.parse(answer);
-              if (parsed.isTimeChangeRequest) {
-                // Find matched task
-                const matchedTask = employeeTasks.find((t: any) => 
+              // Find matched task
+              const matchedTask = employeeTasks.find((t: any) => 
                   t.title.toLowerCase().includes(parsed.taskTitle.toLowerCase()) ||
                   parsed.taskTitle.toLowerCase().includes(t.title.toLowerCase())
                 ) || employeeTasks[0]; // fallback to first task if mismatch
@@ -387,15 +405,14 @@ If they ARE requesting a deadline extension, you must return a raw JSON object O
                   );
                   return;
                 }
+              } catch (jsonErr) {
+                console.warn('[whatsapp webhook] Failed to parse JSON request from Gemini:', jsonErr);
               }
-            } catch (jsonErr) {
-              console.warn('[whatsapp webhook] Failed to parse JSON request from Gemini:', jsonErr);
             }
-          }
 
           if (answer) {
             let replyText = answer;
-            if (answer.startsWith('{')) {
+            if (parsed && parsed.isTimeChangeRequest) {
               replyText = `Hi ${employeeName}! I couldn't process your request. Please ask your manager directly to change your task deadline or try again with a simpler request.`;
             }
             await replyToWhatsApp(from, employeeName, replyText);
