@@ -1,7 +1,7 @@
 async function run() {
   console.log("Sending test payload to VERCEL webhook...");
   try {
-    const res = await fetch('https://crm-gooq.vercel.app/api/whatsapp/webhook', {
+    const res = await fetch('https://enxt-crm.vercel.app/api/whatsapp/webhook', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

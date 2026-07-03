@@ -316,23 +316,33 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
             ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status}, Current Deadline: ${t.due_date} at ${t.due_time || '18:00'})`).join('\n')
             : 'No active tasks.';
 
-          const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to an employee named ${employeeName}. 
-Their current tasks are:
-${tasksContext}
+           const prompt = `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
+You are having a conversation with an employee named ${employeeName}.
 
-The employee sent you this message: "${textBody}"
+Context:
+- Current Date/Time: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+- Employee's Active Tasks:
+${tasksContext || "No active tasks assigned currently."}
 
-Determine if the employee is requesting a deadline extension or a time change for a task (e.g. asking for "2 more hours", "3 more days", or requesting to delay/extend the task to a specific date/time like "tomorrow", "next Monday").
-If they are NOT requesting an extension, reply in a helpful, conversational manner.
+Employee's Message: "${textBody}"
 
-If they ARE requesting a deadline extension, you must return a raw JSON object ONLY. Do not wrap it in markdown code blocks, do not add backticks, and do not add any other text. The JSON structure must be:
-{
-  "isTimeChangeRequest": true,
-  "taskTitle": "<exact title of the task from the list above, or the closest match>",
-  "daysToAdd": <calculate the number of days to add from the task's current deadline to reach their requested extension, default is 0>,
-  "hoursToAdd": <calculate the number of hours to add from the task's current deadline/time to reach their requested extension, default is 0>,
-  "reason": "<reason given by the employee, or 'No reason provided'>"
-}
+Your Guidelines:
+1. First, check if the employee is requesting a deadline extension or time change for an active task (e.g., asking for "2 more hours", "3 more days", "extend task to tomorrow", etc.).
+   If they ARE requesting a deadline extension, you must return a raw JSON object ONLY. Do not wrap it in markdown code blocks, do not add backticks, and do not add any other text. The JSON structure must be:
+   {
+     "isTimeChangeRequest": true,
+     "taskTitle": "<exact title of the task from the list above, or the closest match>",
+     "daysToAdd": <calculate the number of days to add from the task's current deadline to reach their requested extension, default is 0>,
+     "hoursToAdd": <calculate the number of hours to add from the task's current deadline/time to reach their requested extension, default is 0>,
+     "reason": "<reason given by the employee, or 'No reason provided'>"
+   }
+
+2. If they are NOT requesting an extension (they are asking questions, saying hello, discussing their tasks, or just talking):
+   - Reply to them in a warm, professional, encouraging, and supportive tone.
+   - Use structured formatting: bold key words (e.g., *bold*), bullet points, and appropriate emojis to make the message highly readable on WhatsApp.
+   - If they ask about their tasks, help them organize or clarify their next steps.
+   - Remind them that they can update a task status anytime by replying with keywords like "Completed", "In Progress", "Blocked", or "Pending".
+   - Keep your responses relatively concise (2-4 sentences is best for WhatsApp).
 `;
 
           const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
