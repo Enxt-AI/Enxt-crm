@@ -125,15 +125,25 @@ async function processWebhookPayload(payload: any) {
 
     console.log(`[whatsapp webhook bg-worker] Inbound from ${from}: "${textBody}"`);
 
-    // Fetch documents from Supabase
-    const { data: docData } = await supabase
-      .from('app_data')
-      .select('data')
-      .eq('key', 'documents')
-      .single();
-
-    const documents = docData?.data || [];
     const cleanFrom = from.replace(/\D/g, '');
+    const phoneLast10 = cleanFrom.slice(-10);
+
+    console.log(`[whatsapp webhook bg-worker] Loading documents, tasks, and pending requests in parallel...`);
+    
+    const [docResult, tasksResult, pendingResult] = await Promise.all([
+      supabase.from('app_data').select('data').eq('key', 'documents').single(),
+      supabase.from('tasks').select('*'),
+      supabase.from('status_requests')
+        .select('*')
+        .eq('status', 'sent')
+        .ilike('employee_phone', `%${phoneLast10}%`)
+        .order('sent_at', { ascending: false })
+        .limit(1)
+    ]);
+
+    const documents = docResult.data?.data || [];
+    const allTasks = tasksResult.data || [];
+    const pendingRequests = pendingResult.data || [];
 
     // Find employee
     const employee = documents.find((doc: any) => {
@@ -152,19 +162,10 @@ async function processWebhookPayload(payload: any) {
     // ── CHECK FOR PENDING STATUS REQUEST ──────────────────────────
     let handledAsStatusRequest = false;
     try {
-      const phoneLast10 = cleanFrom.slice(-10);
-      console.log(`[whatsapp webhook bg-worker] Looking for pending status request with phone matching: %${phoneLast10}%`);
-      
-      const { data: pendingRequests, error: pendingError } = await supabase
-        .from('status_requests')
-        .select('*')
-        .eq('status', 'sent')
-        .ilike('employee_phone', `%${phoneLast10}%`)
-        .order('sent_at', { ascending: false })
-        .limit(1);
+      console.log(`[whatsapp webhook bg-worker] Checking status requests for phone matching: %${phoneLast10}%`);
 
-      if (pendingError) {
-        console.error(`[whatsapp webhook bg-worker] ❌ Error querying status_requests:`, pendingError);
+      if (pendingResult.error) {
+        console.error(`[whatsapp webhook bg-worker] ❌ Error querying status_requests:`, pendingResult.error);
       }
       
       console.log(`[whatsapp webhook bg-worker] Found ${pendingRequests?.length || 0} pending requests`);
@@ -270,20 +271,10 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
 
     console.log(`[whatsapp webhook bg-worker] Matched employee: ${employeeName}`);
 
-    // Load tasks from Supabase
-    let employeeTasks: any[] = [];
-    try {
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('*')
-        .contains('assigned_employee_ids', [employee.id]);
-
-      if (tasksData) {
-        employeeTasks = tasksData;
-      }
-    } catch (e) {
-      console.warn("[whatsapp webhook bg-worker] Could not load tasks from Supabase", e);
-    }
+    // Filter tasks for this employee from the pre-fetched parallel query
+    const employeeTasks = allTasks.filter((t: any) => 
+      (t.assigned_employee_ids || []).includes(employee.id)
+    );
 
     const lowerText = textBody.toLowerCase();
     const isExtensionRequestText = /\b(extend|extension|time\s*change|delay|more\s*time|extra\s*time|hours|days)\b/i.test(lowerText);
