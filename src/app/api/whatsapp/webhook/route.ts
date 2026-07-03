@@ -34,6 +34,39 @@ export async function GET(request: Request) {
   });
 }
 
+function addTimeToDeadline(originalDateStr: string, originalTimeStr: string | null, daysToAdd: number, hoursToAdd: number) {
+  const dateStr = originalDateStr || new Date().toISOString().split('T')[0];
+  const timeStr = originalTimeStr || '18:00';
+  const isoStr = `${dateStr}T${timeStr}:00+05:30`;
+  const date = new Date(isoStr);
+  
+  if (!isNaN(date.getTime())) {
+    date.setDate(date.getDate() + daysToAdd);
+    date.setHours(date.getHours() + hoursToAdd);
+  } else {
+    const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    now.setDate(now.getUTCDate() + daysToAdd);
+    now.setUTCHours(now.getUTCHours() + hoursToAdd);
+    return {
+      dueDate: now.toISOString().split('T')[0],
+      dueTime: now.toISOString().split('T')[1].substring(0, 5)
+    };
+  }
+
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(date.getTime() + istOffset);
+  const yyyy = istDate.getUTCFullYear();
+  const mm = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(istDate.getUTCDate()).padStart(2, '0');
+  const hh = String(istDate.getUTCHours()).padStart(2, '0');
+  const min = String(istDate.getUTCMinutes()).padStart(2, '0');
+  
+  return {
+    dueDate: `${yyyy}-${mm}-${dd}`,
+    dueTime: `${hh}:${min}`
+  };
+}
+
 async function saveMessageToDB(from: string, employeeName: string, text: string, type: 'inbound' | 'outbound') {
   try {
     const { data, error } = await supabase
@@ -267,7 +300,7 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
         try {
           const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
           const tasksContext = employeeTasks.length > 0
-            ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status})`).join('\n')
+            ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status}, Current Deadline: ${t.due_date} at ${t.due_time || '18:00'})`).join('\n')
             : 'No active tasks.';
 
           const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to an employee named ${employeeName}. 
@@ -276,15 +309,15 @@ ${tasksContext}
 
 The employee sent you this message: "${textBody}"
 
-Determine if the employee is requesting a deadline extension or a time change for a task.
-If they are NOT requesting a deadline extension or time change, reply to their message in a helpful, conversational manner.
+Determine if the employee is requesting a deadline extension or a time change for a task (e.g. asking for "2 more hours", "3 more days", or requesting to delay/extend the task to a specific date/time like "tomorrow", "next Monday").
+If they are NOT requesting an extension, reply in a helpful, conversational manner.
 
-If they ARE requesting a deadline extension or time change, you must return a raw JSON object ONLY. Do not wrap it in markdown code blocks, do not add backticks, and do not add any other text. The JSON structure must be:
+If they ARE requesting a deadline extension, you must return a raw JSON object ONLY. Do not wrap it in markdown code blocks, do not add backticks, and do not add any other text. The JSON structure must be:
 {
   "isTimeChangeRequest": true,
   "taskTitle": "<exact title of the task from the list above, or the closest match>",
-  "requestedDate": "<resolved target date in YYYY-MM-DD format based on relative terms relative to today's date ${new Date().toISOString().split('T')[0]}>",
-  "requestedTime": "<resolved target time in HH:MM format, or '18:00' if not specified>",
+  "daysToAdd": <calculate the number of days to add from the task's current deadline to reach their requested extension, default is 0>,
+  "hoursToAdd": <calculate the number of hours to add from the task's current deadline/time to reach their requested extension, default is 0>,
   "reason": "<reason given by the employee, or 'No reason provided'>"
 }
 `;
@@ -309,6 +342,17 @@ If they ARE requesting a deadline extension or time change, you must return a ra
                 ) || employeeTasks[0]; // fallback to first task if mismatch
 
                 if (matchedTask) {
+                  const days = Number(parsed.daysToAdd) || 0;
+                  const hours = Number(parsed.hoursToAdd) || 0;
+                  
+                  // Calculate new deadline based on original task's deadline
+                  const { dueDate, dueTime } = addTimeToDeadline(
+                    matchedTask.due_date,
+                    matchedTask.due_time,
+                    days,
+                    hours
+                  );
+
                   // Save request
                   const { data: currentData } = await supabase
                     .from('app_data')
@@ -323,8 +367,8 @@ If they ARE requesting a deadline extension or time change, you must return a ra
                     taskTitle: matchedTask.title,
                     employeeId: employee.id,
                     employeeName: employeeName,
-                    requestedDueDate: parsed.requestedDate,
-                    requestedDueTime: parsed.requestedTime,
+                    requestedDueDate: dueDate,
+                    requestedDueTime: dueTime,
                     reason: parsed.reason,
                     status: 'pending',
                     createdAt: new Date().toISOString()
@@ -339,7 +383,7 @@ If they ARE requesting a deadline extension or time change, you must return a ra
                   await replyToWhatsApp(
                     from,
                     employeeName,
-                    `📥 *Extension Request Submitted!*\n\nI have requested a deadline change for your task:\n📋 *Task:* ${matchedTask.title}\n📅 *Requested Deadline:* ${parsed.requestedDate} at ${parsed.requestedTime}\n💬 *Reason:* ${parsed.reason}\n\nYour manager has been notified and will review your request.`
+                    `📥 *Extension Request Submitted!*\n\nI have requested a deadline change for your task:\n📋 *Task:* ${matchedTask.title}\n📅 *Requested Deadline:* ${dueDate} at ${dueTime}\n💬 *Reason:* ${parsed.reason}\n\nYour manager has been notified and will review your request.`
                   );
                   return;
                 }

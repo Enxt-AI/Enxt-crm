@@ -119,7 +119,7 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
   const approveTimeChange = async (req: any) => {
     try {
       // 1. Update task deadline
-      await fetch('/api/tasks', {
+      const res1 = await fetch('/api/tasks', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -131,8 +131,13 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
         })
       });
 
+      if (!res1.ok) {
+        const errorText = await res1.text();
+        throw new Error(`Failed to update task: ${res1.status} ${errorText}`);
+      }
+
       // 2. Update status of request to 'approved' and start stopwatch
-      await fetch('/api/time-change-requests', {
+      const res2 = await fetch('/api/time-change-requests', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -141,6 +146,11 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
           timerStartedAt: new Date().toISOString()
         })
       });
+
+      if (!res2.ok) {
+        const errorText = await res2.text();
+        throw new Error(`Failed to update request: ${res2.status} ${errorText}`);
+      }
 
       // 3. Send WhatsApp notification
       const emp = employees.find(e => e.id === req.employeeId);
@@ -167,7 +177,7 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
   const rejectTimeChange = async (req: any) => {
     try {
       // 1. Update status of request to 'rejected'
-      await fetch('/api/time-change-requests', {
+      const res = await fetch('/api/time-change-requests', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -175,6 +185,11 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
           status: 'rejected'
         })
       });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to reject request: ${res.status} ${errorText}`);
+      }
 
       // 2. Send WhatsApp notification
       const emp = employees.find(e => e.id === req.employeeId);

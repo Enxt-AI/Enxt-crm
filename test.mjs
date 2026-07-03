@@ -67,6 +67,29 @@ async function run() {
     // Clear any previous mock requests to avoid clutter
     const cleanedRequests = requests.filter(r => !r.id.startsWith('tcr-mock-'));
 
+    // Calculate deadline by adding 2 days and 1 hour to original task deadline
+    const originalDueDate = task.due_date || new Date().toISOString().split('T')[0];
+    const originalDueTime = task.due_time || '18:00';
+    
+    const dateObj = new Date(`${originalDueDate}T${originalDueTime}:00+05:30`);
+    if (!isNaN(dateObj.getTime())) {
+      dateObj.setDate(dateObj.getDate() + 2);
+      dateObj.setHours(dateObj.getHours() + 1);
+    } else {
+      dateObj.setTime(Date.now() + 2 * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000);
+    }
+    
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(dateObj.getTime() + istOffset);
+    const yyyy = istDate.getUTCFullYear();
+    const mm = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(istDate.getUTCDate()).padStart(2, '0');
+    const hh = String(istDate.getUTCHours()).padStart(2, '0');
+    const min = String(istDate.getUTCMinutes()).padStart(2, '0');
+    
+    const newDueDate = `${yyyy}-${mm}-${dd}`;
+    const newDueTime = `${hh}:${min}`;
+
     // Add mock request with matching name and ID
     const mockRequest = {
       id: `tcr-mock-${Date.now()}`,
@@ -74,8 +97,8 @@ async function run() {
       taskTitle: task.title,
       employeeId: employeeId,
       employeeName: employeeName,
-      requestedDueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days from now
-      requestedDueTime: '18:00',
+      requestedDueDate: newDueDate,
+      requestedDueTime: newDueTime,
       reason: 'Need extra time to polish the WhatsApp API integration',
       status: 'pending',
       createdAt: new Date().toISOString()
@@ -103,8 +126,8 @@ async function run() {
     console.log('\nInstructions:');
     console.log('1. Refresh your dashboard at http://localhost:3000.');
     console.log('2. Click on the "Tasks" tab.');
-    console.log(`3. You will see a banner: "${employeeName} requested extension for task youtube".`);
-    console.log(`4. Click "Approve"—the stopwatch will start ticking next to ${employeeName}'s name!`);
+    console.log(`3. You will see a banner: "${employeeName} requested extension for task ${task.title}".`);
+    console.log(`4. Click "Approve"—the stopwatch will start ticking next to ${employeeName}'s name on the "${task.title}" task card below!`);
   } catch (err) {
     console.error('Error:', err.message);
   }
