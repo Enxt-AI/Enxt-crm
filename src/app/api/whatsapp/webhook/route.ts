@@ -482,12 +482,14 @@ export async function POST(request: Request) {
     const payload = await request.json();
     console.log('[whatsapp webhook] Payload received:', JSON.stringify(payload, null, 2));
 
-    // Defer the heavy execution logic
-    processWebhookPayload(payload).catch(err => {
+    // Await execution so that Vercel does not terminate the function mid-process
+    try {
+      await processWebhookPayload(payload);
+    } catch (err) {
       console.error('[whatsapp webhook bg-worker] Unhandled error:', err);
-    });
+    }
 
-    // Respond with 200 OK instantly to Meta's server
+    // Respond with 200 OK to Meta's server
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('[whatsapp webhook] Error handling POST request:', error);
