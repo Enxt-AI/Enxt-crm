@@ -119,7 +119,7 @@ export async function GET(request: Request) {
     // 2. Check for tasks due in less than 1 hour
     const oneHourMs = 60 * 60 * 1000;
     
-    // Load sent reminders state from key-value store
+    // Load sent state from key-value store
     const { data: reminderState } = await supabase
       .from('app_data')
       .select('data')
@@ -127,6 +127,14 @@ export async function GET(request: Request) {
       .single();
       
     const sentReminders = reminderState?.data || {};
+
+    const { data: deadlineState } = await supabase
+      .from('app_data')
+      .select('data')
+      .eq('key', 'task_deadlines_reached')
+      .single();
+      
+    const sentDeadlines = deadlineState?.data || {};
 
     // Fetch all incomplete tasks
     const { data: tasksData, error: tasksError } = await supabase
@@ -149,19 +157,59 @@ export async function GET(request: Request) {
     employees.forEach((e: any) => employeeMap.set(e.id, e));
 
     let tasksReminderSent = 0;
+    let deadlinesReachedSent = 0;
     let remindersLogged: string[] = [];
 
     for (const task of (tasksData || [])) {
-      // Skip if reminder already sent
-      if (sentReminders[task.id]) continue;
-
       const dueDateTime = parseToISTDate(task.due_date, task.due_time);
       if (!dueDateTime) continue;
 
       const diffMs = dueDateTime.getTime() - nowTime;
 
-      // If task is due in <= 1 hour (and hasn't passed yet)
+      // 1. Check if task has reached/passed its deadline
+      if (diffMs <= 0) {
+        if (sentDeadlines[task.id]) continue;
+
+        const formattedDate = dueDateTime.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = task.due_time ? ` at ${task.due_time}` : '';
+        
+        const message = 
+          `🚨 *DEADLINE REACHED* 🚨\n\n` +
+          `Hi {employeeName}! Your deadline for this task has been reached:\n\n` +
+          `📋 *Title:* ${task.title}\n` +
+          `📆 *Deadline:* ${formattedDate}${timeStr} (IST)\n` +
+          `🔖 *Current Status:* ${task.status}\n\n` +
+          `Please update your task status in the dashboard or request a deadline extension if you need more time.`;
+
+        let sentToAny = false;
+        const assignees = task.assigned_employee_ids || [];
+        
+        for (const empId of assignees) {
+          const emp = employeeMap.get(empId);
+          if (!emp) continue;
+          const phone = emp.fields?.phone;
+          if (!phone) continue;
+          const name = emp.fields?.name || emp.title || 'there';
+
+          const personalizedMsg = message.replace('{employeeName}', name);
+          const ok = await sendWhatsApp(phone, personalizedMsg);
+          if (ok) {
+            sentToAny = true;
+            remindersLogged.push(`Deadline Reached: ${task.title} -> ${name}`);
+          }
+        }
+
+        if (sentToAny) {
+          sentDeadlines[task.id] = new Date().toISOString();
+          deadlinesReachedSent++;
+        }
+        continue;
+      }
+
+      // 2. Check if task is due in <= 1 hour
       if (diffMs > 0 && diffMs <= oneHourMs) {
+        if (sentReminders[task.id]) continue;
+
         const formattedDate = dueDateTime.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = task.due_time ? ` at ${task.due_time}` : '';
         
@@ -204,6 +252,13 @@ export async function GET(request: Request) {
       await supabase
         .from('app_data')
         .upsert({ key: 'task_reminders_sent', data: sentReminders });
+    }
+
+    // Save deadline state back to app_data
+    if (deadlinesReachedSent > 0) {
+      await supabase
+        .from('app_data')
+        .upsert({ key: 'task_deadlines_reached', data: sentDeadlines });
     }
 
     // 3. Trigger daily check-ins (morning/midday/evening)
