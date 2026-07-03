@@ -86,7 +86,7 @@ async function saveMessageToDB(from: string, employeeName: string, text: string,
       .single();
 
     // Ignore PGRST116 (not found)
-    const messages = (data?.data) || [];
+    let messages = (data?.data) || [];
     messages.push({
       id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
       from,
@@ -95,6 +95,11 @@ async function saveMessageToDB(from: string, employeeName: string, text: string,
       timestamp: new Date().toISOString(),
       type
     });
+
+    // Cap history at 100 messages to keep DB operations extremely fast
+    if (messages.length > 100) {
+      messages = messages.slice(-100);
+    }
 
     await supabase
       .from('app_data')
