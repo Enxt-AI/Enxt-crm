@@ -149,6 +149,7 @@ export default function EnxtBrainApp() {
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [documents, setDocuments] = useState<BrainDocument[]>(brainDocuments);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [loadSuccess, setLoadSuccess] = useState(false);
   const [dbSyncStatus, setDbSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" | "loading" } | null>(null);
   const [activeTaskTab, setActiveTaskTab] = useState<"tasks" | "status">("tasks");
@@ -202,10 +203,12 @@ export default function EnxtBrainApp() {
       .then((data) => {
         if (data && Array.isArray(data) && data.length > 0) {
           setDocuments(data);
+          setLoadSuccess(true);
           setDbSyncStatus("saved");
           console.log("[EnxtBrain] Loaded", data.length, "documents from database");
         } else {
           console.warn("[EnxtBrain] No valid data from API, using local documents");
+          setLoadSuccess(true);
           setDbSyncStatus("saved");
         }
       })
@@ -245,7 +248,7 @@ export default function EnxtBrainApp() {
   };
 
   useEffect(() => {
-    if (isInitializing) return; // Don't save during initial load
+    if (isInitializing || !loadSuccess) return; // Don't save during initial load or if load failed
 
     console.log("[EnxtBrain] Saving", documents.length, "documents to database...");
     setDbSyncStatus("saving");
@@ -271,7 +274,7 @@ export default function EnxtBrainApp() {
         console.error("Failed to save documents", err);
         setDbSyncStatus("error");
       });
-  }, [documents, isInitializing]);
+  }, [documents, isInitializing, loadSuccess]);
 
   const employees = useMemo(() => documents.filter((document) => document.type === "employee"), [documents]);
   const projects = useMemo(() => documents.filter((document) => document.type === "project"), [documents]);
