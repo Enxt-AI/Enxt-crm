@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/status-requests/check-timeouts",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
