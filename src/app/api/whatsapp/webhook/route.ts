@@ -133,6 +133,11 @@ async function processWebhookPayload(payload: any) {
     const cleanFrom = from.replace(/\D/g, '');
     const phoneLast10 = cleanFrom.slice(-10);
 
+    // Identify if the sender is an Admin
+    const adminPhonesEnv = process.env.ADMIN_PHONE_NUMBERS || '917056754400';
+    const ADMIN_PHONES = adminPhonesEnv.split(',').map(p => p.trim().replace(/\D/g, ''));
+    const isAdmin = ADMIN_PHONES.includes(cleanFrom);
+
     console.log(`[whatsapp webhook bg-worker] Loading documents, tasks, and pending requests in parallel...`);
     
     const [docResult, tasksResult, pendingResult] = await Promise.all([
@@ -150,6 +155,15 @@ async function processWebhookPayload(payload: any) {
     const allTasks = tasksResult.data || [];
     const pendingRequests = pendingResult.data || [];
 
+    // Find active employees list for Admin task assignment context
+    const activeEmployees = documents.filter((d: any) => 
+      d.type === 'employee' && 
+      String(d.fields?.status || '').toLowerCase() === 'active'
+    );
+    const employeesListText = activeEmployees.map((emp: any) => 
+      `- Name: ${emp.fields?.name || emp.title} (ID: ${emp.id})`
+    ).join('\n');
+
     // Find employee
     const employee = documents.find((doc: any) => {
       if (doc.type !== 'employee') return false;
@@ -159,7 +173,7 @@ async function processWebhookPayload(payload: any) {
       return cleanPhone.includes(cleanFrom) || cleanFrom.includes(cleanPhone);
     });
 
-    const employeeName = employee?.fields?.name || employee?.title || "Unknown User";
+    const employeeName = employee?.fields?.name || employee?.title || (isAdmin ? "Admin Manager" : "Unknown User");
 
     // Save INBOUND message
     await saveMessageToDB(from, employeeName, textBody, 'inbound');
@@ -244,7 +258,7 @@ async function processWebhookPayload(payload: any) {
       // Continue with normal processing if status check fails
     }
 
-    if (!employee) {
+    if (!employee && !isAdmin) {
       console.log(`[whatsapp webhook bg-worker] Phone number ${from} not associated with any employee. Responding as generic AI.`);
       const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey) {
@@ -285,7 +299,7 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
     const isExtensionRequestText = /\b(extend|extension|time\s*change|delay|more\s*time|extra\s*time|hours|days)\b/i.test(lowerText);
     let newStatus: 'Pending' | 'In Progress' | 'Completed' | 'Blocked' | null = null;
 
-    if (!isExtensionRequestText) {
+    if (!isAdmin && !isExtensionRequestText) {
       if (/\b(completed|done|complete|finished|check)\b/i.test(lowerText)) {
         newStatus = 'Completed';
       } else if (/\b(in progress|progress|started|doing|run)\b/i.test(lowerText)) {
@@ -312,7 +326,39 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
             ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status}, Current Deadline: ${t.due_date} at ${t.due_time || '18:00'})`).join('\n')
             : 'No active tasks.';
 
-           const prompt = `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
+           const prompt = isAdmin ? `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
+You are speaking to the Admin/Manager named ${employeeName}.
+
+Context:
+- Current Date/Time: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+- Active Employees in the Company:
+${employeesListText || "No active employees found."}
+
+Admin's Message: "${textBody}"
+
+Your Guidelines:
+1. First, check if the Admin is trying to assign a new task to an employee.
+   To be a task assignment, the message should specify:
+   - A task title or description (e.g., "Review CRM PR", "Prepare presentation").
+   - A target assignee name (matching or close to one of the employees listed above).
+   - Optionally, a due date/time (e.g., "by tomorrow at 5pm", "by next Monday", "by 2026-07-06"). If no date/time is mentioned, default to tomorrow at 18:00.
+
+   If they ARE assigning a task, you must return a raw JSON object ONLY. Do not wrap it in markdown code blocks, do not add backticks, and do not add any other text. The JSON structure must be:
+   {
+     "isTaskAssignment": true,
+     "assigneeName": "<exact name of the employee from the list, or closest match>",
+     "taskTitle": "<clear, concise title of the task>",
+     "description": "<optional additional description/notes, or 'Assigned via WhatsApp by Admin'>",
+     "dueDate": "YYYY-MM-DD",
+     "dueTime": "HH:MM",
+     "priority": "High" | "Medium" | "Low"
+   }
+
+2. If they are NOT assigning a task (they are just saying hello, asking about tasks, or chatting):
+   - Reply to them in a warm, professional, and helpful tone as their assistant.
+   - You can summarize company tasks or give them status updates if they ask.
+   - Keep your responses relatively concise.
+` : `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
 You are having a conversation with an employee named ${employeeName}.
 
 Context:
@@ -355,6 +401,85 @@ Your Guidelines:
             parsed = cleanAndParseJSON(answer);
           } catch (e) {
             // Not valid JSON
+          }
+
+          if (isAdmin && parsed && parsed.isTaskAssignment) {
+            try {
+              const targetName = parsed.assigneeName;
+              const taskTitle = parsed.taskTitle;
+              const description = parsed.description || "Assigned via WhatsApp by Admin";
+              const dueDate = parsed.dueDate;
+              const dueTime = parsed.dueTime || "18:00";
+              
+              console.log(`[whatsapp webhook bg-worker] Admin is assigning task "${taskTitle}" to ${targetName} (Due: ${dueDate} at ${dueTime})`);
+
+              // Find matching employee
+              const matchedEmployee = activeEmployees.find((emp: any) => {
+                const empName = String(emp.fields?.name || emp.title).toLowerCase();
+                return empName.includes(targetName.toLowerCase()) || targetName.toLowerCase().includes(empName);
+              });
+
+              if (!matchedEmployee) {
+                await replyToWhatsApp(from, employeeName, `❌ *Employee not found*\n\nI couldn't find an active employee matching "${targetName}". Please verify the name and try again.`);
+                return;
+              }
+
+              const assigneeId = matchedEmployee.id;
+              const assigneeName = matchedEmployee.fields?.name || matchedEmployee.title;
+              const assigneePhone = matchedEmployee.fields?.phone;
+
+              // Insert new task into Supabase tasks table
+              const newTask = {
+                id: `task-${Date.now()}`,
+                title: taskTitle,
+                description: description,
+                due_date: dueDate,
+                due_time: dueTime,
+                status: 'Pending',
+                assigned_employee_ids: [assigneeId]
+              };
+
+              const { error: insertError } = await supabase
+                .from('tasks')
+                .insert(newTask);
+
+              if (insertError) {
+                console.error("[whatsapp webhook bg-worker] Failed to insert new task:", insertError);
+                await replyToWhatsApp(from, employeeName, `❌ *Database Error*\n\nI failed to add the task "${taskTitle}" to the task board due to a database error.`);
+                return;
+              }
+
+              // Send notification to assignee if they have a phone number
+              if (assigneePhone) {
+                const formattedTo = assigneePhone.replace(/\D/g, '');
+                const cleanPhone = formattedTo.length === 10 ? `91${formattedTo}` : formattedTo;
+                
+                const assigneeMessage = 
+                  `📋 *New Task Assigned*\n\n` +
+                  `Hi ${assigneeName}!\n\n` +
+                  `Your manager has assigned you a new task:\n` +
+                  `*Title:* ${taskTitle}\n` +
+                  `*Description:* ${description}\n` +
+                  `*Due Date:* ${dueDate} at ${dueTime}\n` +
+                  `*Status:* Pending`;
+
+                // Send the WhatsApp notification
+                await replyToWhatsApp(cleanPhone, assigneeName, assigneeMessage);
+              }
+
+              // Reply confirmation back to the Admin
+              const adminConfirmation = 
+                `✅ *Task Assigned successfully!*\n\n` +
+                `📋 *Task:* ${taskTitle}\n` +
+                `👤 *Assignee:* ${assigneeName}\n` +
+                `📅 *Due Date:* ${dueDate} at ${dueTime}\n\n` +
+                `I have added it to the task board and sent a WhatsApp notification to ${assigneeName}.`;
+
+              await replyToWhatsApp(from, employeeName, adminConfirmation);
+              return;
+            } catch (err) {
+              console.error("[whatsapp webhook bg-worker] Error handling task assignment:", err);
+            }
           }
 
           if (parsed && parsed.isTimeChangeRequest) {
