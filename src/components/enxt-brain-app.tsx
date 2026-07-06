@@ -1251,7 +1251,12 @@ function EmployeesView({
         const response = await fetch("/api/whatsapp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, message })
+          body: JSON.stringify({
+            phone,
+            message,
+            templateName: "company_announcement",
+            templateParams: [name, broadcastMessage.trim()],
+          })
         });
         if (response.ok) sentCount++;
       } catch (e) {

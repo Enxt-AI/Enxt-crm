@@ -3,7 +3,7 @@ import { supabase } from '../../../../lib/supabase';
 
 export async function POST(request: Request) {
   try {
-    const { to, body } = await request.json();
+    const { to, body, template } = await request.json();
     if (!to || !body) {
       return NextResponse.json({ error: 'Missing "to" or "body"' }, { status: 400 });
     }
@@ -79,7 +79,52 @@ export async function POST(request: Request) {
     // 1. Try Meta WhatsApp Cloud API first
     if (whatsappToken && phoneId && !whatsappToken.includes('your_meta_access_token')) {
       const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
-      console.log('[whatsapp send api] Dispatching via Meta Cloud API to:', formattedTo);
+
+      // 1a. Try template message first (works outside 24-hour window)
+      if (template?.name && template?.parameters) {
+        console.log(`[whatsapp send api] Trying template "${template.name}" to:`, formattedTo);
+
+        const templateRes = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${whatsappToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: formattedTo,
+            type: 'template',
+            template: {
+              name: template.name,
+              language: { code: template.language || 'en' },
+              components: [
+                {
+                  type: 'body',
+                  parameters: template.parameters.map((p: string) => ({
+                    type: 'text',
+                    text: p,
+                  })),
+                },
+              ],
+            },
+          }),
+        });
+
+        const templateData = await templateRes.json();
+        console.log(`[whatsapp send api] Template response:`, templateData);
+
+        if (templateRes.ok) {
+          await logMessageToDB();
+          return NextResponse.json({ success: true, result: templateData, method: 'template' }, { status: 200 });
+        }
+
+        // Template failed — fall back to free-form text below
+        console.warn(`[whatsapp send api] Template "${template.name}" failed (${templateRes.status}), falling back to free-form text`);
+      }
+
+      // 1b. Free-form text message (works within 24-hour window only)
+      console.log('[whatsapp send api] Dispatching free-form text via Meta Cloud API to:', formattedTo);
       
       const res = await fetch(url, {
         method: 'POST',
@@ -109,7 +154,7 @@ export async function POST(request: Request) {
       // Log outbound message to database
       await logMessageToDB();
 
-      return NextResponse.json({ success: true, result: data }, { status: 200 });
+      return NextResponse.json({ success: true, result: data, method: 'text' }, { status: 200 });
     }
 
     // 2. Simulation fallback if Meta API is unconfigured
@@ -128,4 +173,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error?.message || 'Internal error' }, { status: 500 });
   }
 }
-

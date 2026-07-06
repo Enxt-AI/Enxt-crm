@@ -148,13 +148,21 @@ export async function GET(request: Request) {
         continue;
       }
 
-      // 2. Send WhatsApp message
+      // 2. Send WhatsApp message (with template for 24hr+ delivery)
+      const greeting = GREETINGS[schedule];
       const message = buildStatusMessage(empName, schedule, project);
       try {
         const sendRes = await fetch(new URL('/api/whatsapp/send', request.url).toString(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: empPhone, body: message }),
+          body: JSON.stringify({
+            to: empPhone,
+            body: message,
+            template: {
+              name: 'daily_status_update',
+              parameters: [greeting, empName, project],
+            },
+          }),
         });
 
         if (sendRes.ok) {

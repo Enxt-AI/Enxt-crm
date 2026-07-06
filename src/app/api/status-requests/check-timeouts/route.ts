@@ -3,7 +3,11 @@ import { supabase } from '../../../../lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-async function sendWhatsApp(to: string, body: string): Promise<boolean> {
+async function sendWhatsApp(
+  to: string,
+  body: string,
+  template?: { name: string; parameters: string[] }
+): Promise<boolean> {
   try {
     const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
     const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
@@ -15,35 +19,55 @@ async function sendWhatsApp(to: string, body: string): Promise<boolean> {
     }
     const digits = cleanTo.replace(/\D/g, '');
     let formattedTo = digits;
-    
+
     // If it's a 10-digit number, prepend '91' (default to India country code)
     if (digits.length === 10) {
       formattedTo = `91${digits}`;
     }
 
-    // 1. Try Meta WhatsApp Cloud API first
     if (whatsappToken && phoneId && !whatsappToken.includes('your_meta_access_token')) {
       const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
-      console.log('[check-timeouts] Dispatching via Meta Cloud API to:', formattedTo);
-      
+
+      // 1a. Try template first (works outside 24-hour window)
+      if (template?.name && template?.parameters) {
+        console.log(`[check-timeouts] Trying template "${template.name}" to:`, formattedTo);
+        const tRes = await fetch(url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${whatsappToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: formattedTo,
+            type: 'template',
+            template: {
+              name: template.name,
+              language: { code: 'en' },
+              components: [{
+                type: 'body',
+                parameters: template.parameters.map(p => ({ type: 'text', text: p })),
+              }],
+            },
+          }),
+        });
+        const tData = await tRes.json();
+        console.log(`[check-timeouts] Template response:`, tData);
+        if (tRes.ok) return true;
+        console.warn(`[check-timeouts] Template failed, falling back to free-form text`);
+      }
+
+      // 1b. Free-form text fallback (works within 24-hour window)
+      console.log('[check-timeouts] Dispatching free-form text to:', formattedTo);
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${whatsappToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${whatsappToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messaging_product: 'whatsapp',
           recipient_type: 'individual',
           to: formattedTo,
           type: 'text',
-          text: {
-            preview_url: false,
-            body: body,
-          },
+          text: { preview_url: false, body },
         }),
       });
-
       const data = await res.json();
       console.log('[check-timeouts] Meta response:', data);
       return res.ok;
@@ -172,18 +196,11 @@ export async function GET(request: Request) {
 
         const formattedDate = dueDateTime.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = task.due_time ? ` at ${task.due_time}` : '';
-        
-        const message = 
-          `🚨 *DEADLINE REACHED* 🚨\n\n` +
-          `Hi {employeeName}! Your deadline for this task has been reached:\n\n` +
-          `📋 *Title:* ${task.title}\n` +
-          `📆 *Deadline:* ${formattedDate}${timeStr} (IST)\n` +
-          `🔖 *Current Status:* ${task.status}\n\n` +
-          `Please update your task status in the dashboard or request a deadline extension if you need more time.`;
+        const deadlineStr = `${formattedDate}${timeStr} (IST)`;
 
         let sentToAny = false;
         const assignees = task.assigned_employee_ids || [];
-        
+
         for (const empId of assignees) {
           const emp = employeeMap.get(empId);
           if (!emp) continue;
@@ -191,8 +208,18 @@ export async function GET(request: Request) {
           if (!phone) continue;
           const name = emp.fields?.name || emp.title || 'there';
 
-          const personalizedMsg = message.replace('{employeeName}', name);
-          const ok = await sendWhatsApp(phone, personalizedMsg);
+          const freeFormMsg =
+            `🚨 *DEADLINE REACHED* 🚨\n\n` +
+            `Hi ${name}! Your deadline for this task has been reached:\n\n` +
+            `📋 *Title:* ${task.title}\n` +
+            `📆 *Deadline:* ${deadlineStr}\n` +
+            `🔖 *Current Status:* ${task.status}\n\n` +
+            `Please update your task status in the dashboard or request a deadline extension if you need more time.`;
+
+          const ok = await sendWhatsApp(phone, freeFormMsg, {
+            name: 'task_deadline_passed',
+            parameters: [name, task.title, deadlineStr, task.status],
+          });
           if (ok) {
             sentToAny = true;
             remindersLogged.push(`Deadline Reached: ${task.title} -> ${name}`);
@@ -212,19 +239,11 @@ export async function GET(request: Request) {
 
         const formattedDate = dueDateTime.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = task.due_time ? ` at ${task.due_time}` : '';
-        
-        const message = 
-          `⏰ *DEADLINE IN 1 HOUR* ⏰\n\n` +
-          `Hi {employeeName}! This is a friendly reminder that your task is due in 1 hour:\n\n` +
-          `📋 *Title:* ${task.title}\n` +
-          `📝 *Description:* ${task.description || 'No description provided.'}\n` +
-          `📆 *Deadline:* ${formattedDate}${timeStr} (IST)\n` +
-          `🔖 *Status:* ${task.status}\n\n` +
-          `⚡ Please wrap up your task or update its status in the dashboard.`;
+        const deadlineStr = `${formattedDate}${timeStr} (IST)`;
 
         let sentToAny = false;
         const assignees = task.assigned_employee_ids || [];
-        
+
         for (const empId of assignees) {
           const emp = employeeMap.get(empId);
           if (!emp) continue;
@@ -232,8 +251,19 @@ export async function GET(request: Request) {
           if (!phone) continue;
           const name = emp.fields?.name || emp.title || 'there';
 
-          const personalizedMsg = message.replace('{employeeName}', name);
-          const ok = await sendWhatsApp(phone, personalizedMsg);
+          const freeFormMsg =
+            `⏰ *DEADLINE IN 1 HOUR* ⏰\n\n` +
+            `Hi ${name}! This is a friendly reminder that your task is due in 1 hour:\n\n` +
+            `📋 *Title:* ${task.title}\n` +
+            `📝 *Description:* ${task.description || 'No description provided.'}\n` +
+            `📆 *Deadline:* ${deadlineStr}\n` +
+            `🔖 *Status:* ${task.status}\n\n` +
+            `⚡ Please wrap up your task or update its status in the dashboard.`;
+
+          const ok = await sendWhatsApp(phone, freeFormMsg, {
+            name: 'task_due_reminder',
+            parameters: [name, task.title, deadlineStr, task.status],
+          });
           if (ok) {
             sentToAny = true;
             remindersLogged.push(`${task.title} -> ${name}`);

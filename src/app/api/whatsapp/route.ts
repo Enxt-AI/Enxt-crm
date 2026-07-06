@@ -25,8 +25,47 @@ export async function POST(request: Request) {
     // 1. Try Meta WhatsApp Cloud API first
     if (whatsappToken && phoneId && !whatsappToken.includes('your_meta_access_token')) {
       const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
-      console.log('[whatsapp global api] Dispatching via Meta Cloud API to:', formattedTo);
-      
+
+      // 1a. Try template message first (works outside 24-hour window)
+      if (templateName && templateParams?.length) {
+        console.log(`[whatsapp global api] Trying template "${templateName}" to:`, formattedTo);
+
+        const tRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${whatsappToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: formattedTo,
+            type: "template",
+            template: {
+              name: templateName,
+              language: { code: "en" },
+              components: [{
+                type: "body",
+                parameters: templateParams.map((p: string) => ({ type: "text", text: p })),
+              }],
+            },
+          }),
+        });
+
+        const tData = await tRes.json();
+        console.log(`[whatsapp global api] Template response:`, tData);
+
+        if (tRes.ok) {
+          return NextResponse.json({ success: true, messageId: tData.messages?.[0]?.id, method: 'template' });
+        }
+
+        // Template failed — fall back to free-form text below
+        console.warn(`[whatsapp global api] Template "${templateName}" failed (${tRes.status}), falling back to text`);
+      }
+
+      // 1b. Free-form text fallback (works within 24-hour window)
+      console.log('[whatsapp global api] Dispatching free-form text to:', formattedTo);
+
       const payload = {
         messaging_product: "whatsapp",
         recipient_type: "individual",
@@ -54,7 +93,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: data.error?.message || "Failed to send WhatsApp message" }, { status: response.status });
       }
 
-      return NextResponse.json({ success: true, messageId: data.messages?.[0]?.id });
+      return NextResponse.json({ success: true, messageId: data.messages?.[0]?.id, method: 'text' });
     }
 
     // 2. Simulation fallback if Meta API is unconfigured
