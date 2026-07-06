@@ -1254,7 +1254,7 @@ function EmployeesView({
           body: JSON.stringify({
             phone,
             message,
-            templateName: "company_announcement",
+            templateName: "team_broadcast",
             templateParams: [name, broadcastMessage.trim()],
           })
         });
