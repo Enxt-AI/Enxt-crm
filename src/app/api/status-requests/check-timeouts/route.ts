@@ -262,58 +262,63 @@ export async function GET(request: Request) {
     }
 
     // 3. Trigger daily check-ins (morning/midday/evening)
+    // Resilient approach: check ALL schedules on every call.
+    // If we're past the trigger time and it hasn't been sent today, send it.
+    // This works even if the cron fires late or infrequently.
     const istNow = new Date(nowTime + 5.5 * 60 * 60 * 1000);
     const istHour = istNow.getUTCHours();
-    const istMinute = istNow.getUTCMinutes();
-    
-    let targetSchedule: 'morning' | 'midday' | 'evening' | null = null;
-    let scheduleTriggered = false;
-    let scheduleMessage = '';
+    const todayIST = istNow.toISOString().split('T')[0];
 
-    // Check if current time is within a 10-minute window of the check-in time
-    // 10:00 AM to 10:10 AM IST
-    if (istHour === 10 && istMinute >= 0 && istMinute < 10) {
-      targetSchedule = 'morning';
-    }
-    // 1:00 PM to 1:10 PM IST
-    else if (istHour === 13 && istMinute >= 0 && istMinute < 10) {
-      targetSchedule = 'midday';
-    }
-    // 6:00 PM to 6:10 PM IST
-    else if (istHour === 18 && istMinute >= 0 && istMinute < 10) {
-      targetSchedule = 'evening';
-    }
+    // Only send check-ins on weekdays (Mon=1 to Fri=5)
+    const dayOfWeek = istNow.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
 
-    if (targetSchedule) {
-      try {
-        const todayIST = istNow.toISOString().split('T')[0];
-        // Check if requests for this schedule today already exist before triggering send
-        const { data: existing, error: existError } = await supabase
-          .from('status_requests')
-          .select('id')
-          .eq('schedule_label', targetSchedule)
-          .gte('scheduled_time', `${todayIST}T00:00:00+05:30`)
-          .lte('scheduled_time', `${todayIST}T23:59:59+05:30`)
-          .limit(1);
+    const schedules: { label: 'morning' | 'midday' | 'evening'; hour: number }[] = [
+      { label: 'morning', hour: 10 },
+      { label: 'midday', hour: 13 },
+      { label: 'evening', hour: 18 },
+    ];
 
-        if (existError) throw existError;
+    const schedulesTriggered: { schedule: string; result: string }[] = [];
 
-        if (existing && existing.length > 0) {
-          console.log(`[check-timeouts] Status requests for ${targetSchedule} today have already been sent. Skipping trigger.`);
-          scheduleMessage = `Already sent today (${existing.length} requests exist)`;
-        } else {
+    if (isWeekday) {
+      for (const sched of schedules) {
+        // Only trigger if we're past the schedule time
+        if (istHour < sched.hour) continue;
+
+        try {
+          // Check if already sent today
+          const { data: existing, error: existError } = await supabase
+            .from('status_requests')
+            .select('id')
+            .eq('schedule_label', sched.label)
+            .gte('scheduled_time', `${todayIST}T00:00:00+05:30`)
+            .lte('scheduled_time', `${todayIST}T23:59:59+05:30`)
+            .limit(1);
+
+          if (existError) throw existError;
+
+          if (existing && existing.length > 0) {
+            console.log(`[check-timeouts] ${sched.label} already sent today. Skipping.`);
+            schedulesTriggered.push({ schedule: sched.label, result: 'already_sent' });
+            continue;
+          }
+
+          // Trigger send
           const requestUrl = new URL(request.url);
           const origin = requestUrl.origin;
-          console.log(`[check-timeouts] Triggering check-in send for ${targetSchedule} at ${origin}`);
-          
-          const sendRes = await fetch(`${origin}/api/status-requests/send?schedule=${targetSchedule}`);
+          console.log(`[check-timeouts] Triggering ${sched.label} check-in send at ${origin}`);
+
+          const sendRes = await fetch(`${origin}/api/status-requests/send?schedule=${sched.label}`);
           const sendData = await sendRes.json();
-          scheduleTriggered = true;
-          scheduleMessage = sendData.message || 'Triggered check-in API';
+          schedulesTriggered.push({
+            schedule: sched.label,
+            result: `sent: ${sendData.sent || 0}, failed: ${sendData.failed || 0}`,
+          });
+        } catch (err: any) {
+          console.error(`[check-timeouts] Failed to trigger ${sched.label}:`, err);
+          schedulesTriggered.push({ schedule: sched.label, result: `error: ${err.message}` });
         }
-      } catch (err: any) {
-        console.error(`[check-timeouts] Failed to check or trigger check-in API:`, err);
-        scheduleMessage = `Error: ${err.message}`;
       }
     }
 
@@ -322,11 +327,9 @@ export async function GET(request: Request) {
       expiredCount,
       tasksReminderSent,
       remindersLogged,
-      scheduleCheck: {
-        triggered: scheduleTriggered,
-        schedule: targetSchedule,
-        message: scheduleMessage
-      }
+      isWeekday,
+      currentISTHour: istHour,
+      schedulesTriggered,
     });
 
   } catch (error: any) {
