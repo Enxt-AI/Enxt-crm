@@ -1245,7 +1245,7 @@ function EmployeesView({
       
       setWhatsappToast({ message: `Broadcasting message to ${name} (${i + 1}/${activeEmployees.length})...`, type: "loading" });
 
-      const message = `Hi ${name}, a message from Enxt AI:\n\n${broadcastMessage}`;
+      const message = `Hi ${name}, a message from Enxt AI:\n\n${broadcastMessage}\n\n— The Enxt AI Team`;
 
       try {
         const response = await fetch("/api/whatsapp", {
