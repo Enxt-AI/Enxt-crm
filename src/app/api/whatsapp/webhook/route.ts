@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   });
 }
 
-function addTimeToDeadline(originalDateStr: string, originalTimeStr: string | null, daysToAdd: number, hoursToAdd: number) {
+function addTimeToDeadline(originalDateStr: string, originalTimeStr: string | null, daysToAdd: number, hoursToAdd: number, minutesToAdd: number = 0) {
   const dateStr = originalDateStr || new Date().toISOString().split('T')[0];
   const timeStr = originalTimeStr || '18:00';
   const isoStr = `${dateStr}T${timeStr}:00+05:30`;
@@ -43,10 +43,12 @@ function addTimeToDeadline(originalDateStr: string, originalTimeStr: string | nu
   if (!isNaN(date.getTime())) {
     date.setDate(date.getDate() + daysToAdd);
     date.setHours(date.getHours() + hoursToAdd);
+    date.setMinutes(date.getMinutes() + minutesToAdd);
   } else {
     const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
     now.setDate(now.getUTCDate() + daysToAdd);
     now.setUTCHours(now.getUTCHours() + hoursToAdd);
+    now.setUTCMinutes(now.getUTCMinutes() + minutesToAdd);
     return {
       dueDate: now.toISOString().split('T')[0],
       dueTime: now.toISOString().split('T')[1].substring(0, 5)
