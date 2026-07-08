@@ -452,7 +452,16 @@ Your Guidelines:
             parsed
           });
 
-          if (isAdmin && parsed && parsed.isTaskAssignment) {
+          if (parsed && parsed.isTaskAssignment) {
+            if (!isAdmin) {
+              await replyToWhatsApp(
+                from,
+                employeeName,
+                `❌ *Permission Denied*\n\nYou are not authorized to assign tasks. Only managers/administrators can assign tasks.`
+              );
+              return;
+            }
+
             try {
               const targetName = parsed.assigneeName;
               const taskTitle = parsed.taskTitle;
