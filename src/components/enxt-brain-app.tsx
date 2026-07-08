@@ -1747,7 +1747,6 @@ function DocumentReference({
           ) : (
             <Upload size={14} aria-hidden="true" style={{ color: 'var(--green)' }} />
           )}
-          <span>{isUploading ? "Uploading..." : "Upload"}</span>
         </button>
       </div>
     </div>
