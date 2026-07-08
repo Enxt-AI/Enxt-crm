@@ -386,7 +386,7 @@ Your Guidelines:
                 description: "Conversational reply text formatted with bold (*word*) and emojis for WhatsApp if not task assignment/extension." 
               }
             },
-            required: ["isTaskAssignment", "isTimeChangeRequest", "conversationalReply"]
+            required: ["isTaskAssignment", "isTimeChangeRequest", "conversationalReply", "hoursToAdd", "daysToAdd"]
           };
 
           const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
