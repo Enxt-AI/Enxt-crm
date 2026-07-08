@@ -542,22 +542,6 @@ Your Guidelines:
                     employeeName,
                     `📥 *Extension Request Submitted!*\n\nI have requested a deadline change for your task:\n📋 *Task:* ${matchedTask.title}\n📅 *Requested Deadline:* ${dueDate} at ${dueTime}\n💬 *Reason:* ${parsed.reason}\n\nYour manager has been notified and will review your request.`
                   );
-
-                  // Send notification to all Admins
-                  for (const adminPhone of ADMIN_PHONES) {
-                    if (adminPhone && adminPhone !== from) { // Don't notify them if they somehow requested it themselves
-                      await replyToWhatsApp(
-                        adminPhone,
-                        'Admin Manager',
-                        `📥 *NEW DEADLINE EXTENSION REQUEST*\n\n` +
-                        `👤 *Employee:* ${employeeName}\n` +
-                        `📋 *Task:* ${matchedTask.title}\n` +
-                        `📅 *Requested Deadline:* ${dueDate} at ${dueTime}\n` +
-                        `💬 *Reason:* ${parsed.reason || 'No reason provided.'}\n\n` +
-                        `Please approve or reject this request on your dashboard.`
-                      );
-                    }
-                  }
                   return;
                 }
               } catch (jsonErr) {
