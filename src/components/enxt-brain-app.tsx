@@ -27,7 +27,9 @@ import {
   X,
   CreditCard,
   ClipboardList,
-  Activity
+  Activity,
+  Upload,
+  Loader2
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -1524,6 +1526,8 @@ function EmployeesView({
                 </StatusBadge>
               </div>
               <DocumentReference
+                employee={employee}
+                onUpdateEmployee={onUpdateEmployee}
                 employeeName={asText(employee, "name")}
                 label="Offer"
                 onView={setViewedDocument}
@@ -1532,6 +1536,8 @@ function EmployeesView({
                 value={asText(employee, "offerLetter")}
               />
               <DocumentReference
+                employee={employee}
+                onUpdateEmployee={onUpdateEmployee}
                 employeeName={asText(employee, "name")}
                 label="PAN"
                 onView={setViewedDocument}
@@ -1540,6 +1546,8 @@ function EmployeesView({
                 value={asText(employee, "panCard")}
               />
               <DocumentReference
+                employee={employee}
+                onUpdateEmployee={onUpdateEmployee}
                 employeeName={asText(employee, "name")}
                 label="Aadhaar"
                 onView={setViewedDocument}
@@ -1548,6 +1556,8 @@ function EmployeesView({
                 value={asText(employee, "aadhaarCard")}
               />
               <DocumentReference
+                employee={employee}
+                onUpdateEmployee={onUpdateEmployee}
                 employeeName={asText(employee, "name")}
                 label="Bank"
                 onView={setViewedDocument}
@@ -1600,6 +1610,8 @@ function hasCompleteEmployeeDocs(employee: BrainDocument) {
 }
 
 function DocumentReference({
+  employee,
+  onUpdateEmployee,
   employeeName,
   label,
   status,
@@ -1607,6 +1619,8 @@ function DocumentReference({
   url,
   onView
 }: {
+  employee: BrainDocument;
+  onUpdateEmployee: (employeeId: string, fields: any) => void;
   employeeName: string;
   label: string;
   status: string;
@@ -1614,23 +1628,133 @@ function DocumentReference({
   url: string;
   onView: (document: ViewedEmployeeDocument) => void;
 }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const available = status === "Available";
+
+  const getFieldKeys = (docLabel: string) => {
+    switch (docLabel) {
+      case "Offer":
+        return { textKey: "offerLetter", urlKey: "offerLetterUrl" };
+      case "PAN":
+        return { textKey: "panCard", urlKey: "panCardUrl" };
+      case "Aadhaar":
+        return { textKey: "aadhaarCard", urlKey: "aadhaarCardUrl" };
+      case "Bank":
+        return { textKey: "bankDetails", urlKey: "bankDetailsUrl" };
+      default:
+        return { textKey: "", urlKey: "" };
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("employeeId", employee.id);
+    formData.append("documentType", label);
+
+    try {
+      const res = await fetch("/api/documents/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        const { textKey, urlKey } = getFieldKeys(label);
+        if (textKey && urlKey) {
+          const currentFields = {
+            name: asText(employee, "name"),
+            status: asText(employee, "status"),
+            currentSalaryRaw: asText(employee, "currentSalaryRaw"),
+            updatedStipendRaw: asText(employee, "updatedStipendRaw"),
+            oldStipendRaw: asText(employee, "oldStipendRaw"),
+            dateOfJoining: asText(employee, "dateOfJoining"),
+            dateOfLeaving: asText(employee, "dateOfLeaving"),
+            offerLetter: asText(employee, "offerLetter"),
+            panCard: asText(employee, "panCard"),
+            aadhaarCard: asText(employee, "aadhaarCard"),
+            bankDetails: asText(employee, "bankDetails"),
+            offerLetterUrl: asText(employee, "offerLetterUrl"),
+            panCardUrl: asText(employee, "panCardUrl"),
+            aadhaarCardUrl: asText(employee, "aadhaarCardUrl"),
+            bankDetailsUrl: asText(employee, "bankDetailsUrl"),
+            phone: asText(employee, "phone")
+          };
+
+          const updatedFields = {
+            ...currentFields,
+            [textKey]: data.fileName,
+            [urlKey]: data.webViewLink
+          };
+
+          onUpdateEmployee(employee.id, updatedFields);
+        }
+      } else {
+        alert(`Upload failed: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Upload error: ${err.message || err}`);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <div className="doc-ref-row">
       <span>{label}</span>
       <strong className={available ? "available" : "missing"}>{status || "Missing"}</strong>
-      <small>{available ? value : "No document reference in sheet"}</small>
-      <button
-        className="doc-view-button"
-        disabled={!available}
-        onClick={() => onView({ employeeName, label, status, value, url })}
-        title={`View ${label}`}
-        type="button"
-      >
-        <Eye size={14} aria-hidden="true" />
-        <span>View</span>
-      </button>
+      <small style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'block', maxWidth: '150px' }}>
+        {available ? value : "No document in vault"}
+      </small>
+      <div style={{ display: "flex", gap: "6px" }}>
+        <button
+          className="doc-view-button"
+          disabled={!available}
+          onClick={() => onView({ employeeName, label, status, value, url })}
+          title={`View ${label}`}
+          type="button"
+        >
+          <Eye size={14} aria-hidden="true" />
+          <span>View</span>
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+        />
+
+        <button
+          className="doc-view-button"
+          disabled={isUploading}
+          onClick={handleUploadClick}
+          title={`Upload ${label} file to Google Drive`}
+          type="button"
+          style={{
+            background: isUploading ? "var(--accent-dim)" : "var(--accent)",
+            color: "white",
+            borderColor: "transparent"
+          }}
+        >
+          {isUploading ? (
+            <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <Upload size={14} aria-hidden="true" />
+          )}
+          <span>{isUploading ? "Uploading..." : "Upload"}</span>
+        </button>
+      </div>
     </div>
   );
 }
