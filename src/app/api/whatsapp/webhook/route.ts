@@ -388,8 +388,8 @@ ${tasksContext || "No active tasks assigned currently."}
 Employee's Message: "${textBody}"
 
 Your Guidelines:
-1. First, check if the employee is requesting a deadline extension or time change for an active task (e.g., asking for "2 more hours", "3 more days", "extend task to tomorrow", etc.).
-   If they ARE requesting a deadline extension, set isTimeChangeRequest to true and fill in taskTitle, daysToAdd, hoursToAdd, and reason.
+1. First, check if the employee is requesting a deadline extension or time change for an active task (e.g., asking for "2 more hours", "30 minutes more", "3 more days", "extend task to tomorrow", etc.).
+   If they ARE requesting a deadline extension, set isTimeChangeRequest to true and fill in taskTitle, daysToAdd, hoursToAdd, minutesToAdd, and reason.
 2. If they are NOT requesting an extension, set isTimeChangeRequest to false and write a helpful conversational reply in conversationalReply.
 `;
 
@@ -412,13 +412,14 @@ Your Guidelines:
               },
               daysToAdd: { type: "INTEGER" },
               hoursToAdd: { type: "INTEGER" },
+              minutesToAdd: { type: "INTEGER" },
               reason: { type: "STRING" },
               conversationalReply: { 
                 type: "STRING", 
                 description: "Conversational reply text formatted with bold (*word*) and emojis for WhatsApp if not task assignment/extension." 
               }
             },
-            required: ["isTaskAssignment", "isTimeChangeRequest", "conversationalReply", "hoursToAdd", "daysToAdd"]
+            required: ["isTaskAssignment", "isTimeChangeRequest", "conversationalReply", "hoursToAdd", "daysToAdd", "minutesToAdd"]
           };
 
           const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -548,13 +549,15 @@ Your Guidelines:
                 if (matchedTask) {
                   const days = Number(parsed.daysToAdd) || 0;
                   const hours = Number(parsed.hoursToAdd) || 0;
+                  const minutes = Number(parsed.minutesToAdd) || 0;
                   
                   // Calculate new deadline based on original task's deadline
                   const { dueDate, dueTime } = addTimeToDeadline(
                     matchedTask.due_date,
                     matchedTask.due_time,
                     days,
-                    hours
+                    hours,
+                    minutes
                   );
 
                   // Save request
