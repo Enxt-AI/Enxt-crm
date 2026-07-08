@@ -57,9 +57,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    let email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    let privateKey = process.env.GOOGLE_PRIVATE_KEY;
+    let folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+
+    // Automatically strip surrounding quotes if they were copied into Vercel settings
+    if (email) email = email.trim().replace(/^['"]|['"]$/g, '');
+    if (privateKey) privateKey = privateKey.trim().replace(/^['"]|['"]$/g, '');
+    if (folderId) folderId = folderId.trim().replace(/^['"]|['"]$/g, '');
 
     // Fallback: If credentials are not set, return a mock successful upload to let the user know they need to configure env variables
     if (!email || !privateKey) {
