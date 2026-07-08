@@ -38,12 +38,12 @@ function addTimeToDeadline(originalDateStr: string, originalTimeStr: string | nu
   const dateStr = originalDateStr || new Date().toISOString().split('T')[0];
   const timeStr = originalTimeStr || '18:00';
   const isoStr = `${dateStr}T${timeStr}:00+05:30`;
-  const date = new Date(isoStr);
+  let date = new Date(isoStr);
   
   if (!isNaN(date.getTime())) {
-    date.setDate(date.getDate() + daysToAdd);
-    date.setHours(date.getHours() + hoursToAdd);
-    date.setMinutes(date.getMinutes() + minutesToAdd);
+    const baseTime = Math.max(date.getTime(), Date.now());
+    const newTime = baseTime + (daysToAdd * 24 * 60 * 60 * 1000) + (hoursToAdd * 60 * 60 * 1000) + (minutesToAdd * 60 * 1000);
+    date = new Date(newTime);
   } else {
     const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
     now.setDate(now.getUTCDate() + daysToAdd);
