@@ -1775,7 +1775,26 @@ function EmployeeDocumentViewer({
             <X size={18} aria-hidden="true" />
           </button>
         </div>
-        {previewUrl ? (
+        {viewedDoc.url.includes("sim-drive") ? (
+          <div className="document-preview-box" style={{ background: '#f8f9fa', padding: '32px', borderRadius: '12px', textAlign: 'center', border: '2px dashed var(--line)' }}>
+            <FileText size={48} style={{ color: 'var(--green)', marginBottom: '12px' }} aria-hidden="true" />
+            <h4 style={{ marginBottom: '6px', fontSize: '1.1rem', color: 'var(--ink)' }}>Simulated Google Drive File</h4>
+            <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '20px', maxWidth: '380px', margin: '0 auto 20px' }}>
+              File <strong>{viewedDoc.value}</strong> uploaded successfully! This mock view is active because you are testing on a personal Google Drive account.
+            </p>
+            <div style={{ background: 'white', padding: '16px', borderRadius: '8px', border: '1px solid var(--line)', display: 'inline-block', textAlign: 'left', fontSize: '0.85rem', minWidth: '280px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ borderBottom: '1px solid var(--line)', paddingBottom: '6px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--muted)' }}>Doc Type:</span> <strong>{viewedDoc.label}</strong>
+              </div>
+              <div style={{ borderBottom: '1px solid var(--line)', paddingBottom: '6px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--muted)' }}>Employee:</span> <strong>{viewedDoc.employeeName}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--muted)' }}>Status:</span> <strong style={{ color: 'var(--green)' }}>Saved & Shared</strong>
+              </div>
+            </div>
+          </div>
+        ) : previewUrl ? (
           <div className="document-preview-frame">
             <iframe src={previewUrl} title={`${viewedDoc.employeeName} ${viewedDoc.label}`} />
             <a href={viewedDoc.url} rel="noreferrer" target="_blank">
