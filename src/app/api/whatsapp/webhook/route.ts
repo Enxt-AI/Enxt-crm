@@ -323,10 +323,7 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
         try {
           const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
           const tasksContext = employeeTasks.length > 0
-            ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status}, Current Deadline: ${t.due_date} at ${t.due_time || '18:00'})`).join('\n')
-            : 'No active tasks.';
-
-           const prompt = isAdmin ? `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
+            ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status}, Current Deadl            const prompt = isAdmin ? `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
 You are speaking to the Admin/Manager named ${employeeName}.
 
 Context:
@@ -341,23 +338,10 @@ Your Guidelines:
    To be a task assignment, the message should specify:
    - A task title or description (e.g., "Review CRM PR", "Prepare presentation").
    - A target assignee name (matching or close to one of the employees listed above).
-   - Optionally, a due date/time (e.g., "by tomorrow at 5pm", "by next Monday", "by 2026-07-06"). If no date/time is mentioned, default to tomorrow at 18:00.
+   - Optionally, a due date/time (e.g., "by tomorrow at 5pm", "by next Monday"). If no date/time is mentioned, default to tomorrow at 18:00.
 
-   If they ARE assigning a task, you must return a raw JSON object ONLY. Do not wrap it in markdown code blocks, do not add backticks, and do not add any other text. The JSON structure must be:
-   {
-     "isTaskAssignment": true,
-     "assigneeName": "<exact name of the employee from the list, or closest match>",
-     "taskTitle": "<clear, concise title of the task>",
-     "description": "<optional additional description/notes, or 'Assigned via WhatsApp by Admin'>",
-     "dueDate": "YYYY-MM-DD",
-     "dueTime": "HH:MM",
-     "priority": "High" | "Medium" | "Low"
-   }
-
-2. If they are NOT assigning a task (they are just saying hello, asking about tasks, or chatting):
-   - Reply to them in a warm, professional, and helpful tone as their assistant.
-   - You can summarize company tasks or give them status updates if they ask.
-   - Keep your responses relatively concise.
+   If they ARE assigning a task, set isTaskAssignment to true and fill in assigneeName, taskTitle, description, dueDate, dueTime, and priority.
+2. If they are NOT assigning a task, set isTaskAssignment to false and write a friendly, professional response in conversationalReply.
 ` : `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
 You are having a conversation with an employee named ${employeeName}.
 
@@ -370,37 +354,58 @@ Employee's Message: "${textBody}"
 
 Your Guidelines:
 1. First, check if the employee is requesting a deadline extension or time change for an active task (e.g., asking for "2 more hours", "3 more days", "extend task to tomorrow", etc.).
-   If they ARE requesting a deadline extension, you must return a raw JSON object ONLY. Do not wrap it in markdown code blocks, do not add backticks, and do not add any other text. The JSON structure must be:
-   {
-     "isTimeChangeRequest": true,
-     "taskTitle": "<exact title of the task from the list above, or the closest match>",
-     "daysToAdd": <calculate the number of days to add from the task's current deadline to reach their requested extension, default is 0>,
-     "hoursToAdd": <calculate the number of hours to add from the task's current deadline/time to reach their requested extension, default is 0>,
-     "reason": "<reason given by the employee, or 'No reason provided'>"
-   }
-
-2. If they are NOT requesting an extension (they are asking questions, saying hello, discussing their tasks, or just talking):
-   - Reply to them in a warm, professional, encouraging, and supportive tone.
-   - Use structured formatting: bold key words (e.g., *bold*), bullet points, and appropriate emojis to make the message highly readable on WhatsApp.
-   - If they ask about their tasks, help them organize or clarify their next steps.
-   - Remind them that they can update a task status anytime by replying with keywords like "Completed", "In Progress", "Blocked", or "Pending".
-   - Keep your responses relatively concise (2-4 sentences is best for WhatsApp).
+   If they ARE requesting a deadline extension, set isTimeChangeRequest to true and fill in taskTitle, daysToAdd, hoursToAdd, and reason.
+2. If they are NOT requesting an extension, set isTimeChangeRequest to false and write a helpful conversational reply in conversationalReply.
 `;
+
+          const schema = {
+            type: "OBJECT",
+            properties: {
+              isTaskAssignment: { 
+                type: "BOOLEAN", 
+                description: "Set to true if the admin is assigning a new task to an employee, otherwise false." 
+              },
+              assigneeName: { type: "STRING" },
+              taskTitle: { type: "STRING" },
+              description: { type: "STRING" },
+              dueDate: { type: "STRING", description: "Format: YYYY-MM-DD" },
+              dueTime: { type: "STRING", description: "Format: HH:MM" },
+              priority: { type: "STRING" },
+              isTimeChangeRequest: { 
+                type: "BOOLEAN", 
+                description: "Set to true if the employee is asking for a deadline extension or time change, otherwise false." 
+              },
+              daysToAdd: { type: "INTEGER" },
+              hoursToAdd: { type: "INTEGER" },
+              reason: { type: "STRING" },
+              conversationalReply: { 
+                type: "STRING", 
+                description: "Conversational reply text formatted with bold (*word*) and emojis for WhatsApp if not task assignment/extension." 
+              }
+            },
+            required: ["isTaskAssignment", "isTimeChangeRequest", "conversationalReply"]
+          };
 
           const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
             method: "POST",
             headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } })
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.7,
+                responseMimeType: "application/json",
+                responseSchema: schema
+              }
+            })
           });
 
           const responsePayload = await apiResponse.json();
-          const answer = responsePayload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          const rawAnswer = responsePayload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
           let parsed: any = null;
           try {
-            parsed = cleanAndParseJSON(answer);
+            parsed = JSON.parse(rawAnswer);
           } catch (e) {
-            // Not valid JSON
           }
 
           if (isAdmin && parsed && parsed.isTaskAssignment) {
@@ -534,6 +539,22 @@ Your Guidelines:
                     employeeName,
                     `📥 *Extension Request Submitted!*\n\nI have requested a deadline change for your task:\n📋 *Task:* ${matchedTask.title}\n📅 *Requested Deadline:* ${dueDate} at ${dueTime}\n💬 *Reason:* ${parsed.reason}\n\nYour manager has been notified and will review your request.`
                   );
+
+                  // Send notification to all Admins
+                  for (const adminPhone of ADMIN_PHONES) {
+                    if (adminPhone && adminPhone !== from) { // Don't notify them if they somehow requested it themselves
+                      await replyToWhatsApp(
+                        adminPhone,
+                        'Admin Manager',
+                        `📥 *NEW DEADLINE EXTENSION REQUEST*\n\n` +
+                        `👤 *Employee:* ${employeeName}\n` +
+                        `📋 *Task:* ${matchedTask.title}\n` +
+                        `📅 *Requested Deadline:* ${dueDate} at ${dueTime}\n` +
+                        `💬 *Reason:* ${parsed.reason || 'No reason provided.'}\n\n` +
+                        `Please approve or reject this request on your dashboard.`
+                      );
+                    }
+                  }
                   return;
                 }
               } catch (jsonErr) {
@@ -541,14 +562,12 @@ Your Guidelines:
               }
             }
 
-          if (answer) {
-            let replyText = answer;
-            if (parsed && parsed.isTimeChangeRequest) {
-              replyText = `Hi ${employeeName}! I couldn't process your request. Please ask your manager directly to change your task deadline or try again with a simpler request.`;
-            }
-            await replyToWhatsApp(from, employeeName, replyText);
-            return;
+          let replyText = parsed?.conversationalReply || rawAnswer || "How can I help you today?";
+          if (parsed && parsed.isTimeChangeRequest && !parsed.conversationalReply) {
+            replyText = `Hi ${employeeName}! I couldn't process your deadline extension request. Please make sure the task title is correct, or ask your manager directly.`;
           }
+          await replyToWhatsApp(from, employeeName, replyText);
+          return;
         } catch (error) { console.error('[whatsapp webhook bg-worker] Error calling Gemini:', error); }
       }
 

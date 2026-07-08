@@ -42,14 +42,22 @@ function isDueToday(dueDate: string, status: string): boolean {
   return due.getTime() === today.getTime();
 }
 
-function Stopwatch({ startTime }: { startTime: string }) {
+function Stopwatch({ startTime, deadlineTime }: { startTime: string; deadlineTime?: Date | null }) {
   const [elapsed, setElapsed] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
     const start = new Date(startTime).getTime();
+    const deadline = deadlineTime ? deadlineTime.getTime() : null;
     
     const update = () => {
       const now = Date.now();
+      
+      if (deadline && now >= deadline) {
+        setIsExpired(true);
+        return;
+      }
+      
       const diff = Math.max(0, now - start);
       
       const secs = Math.floor((diff / 1000) % 60);
@@ -63,7 +71,9 @@ function Stopwatch({ startTime }: { startTime: string }) {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [startTime]);
+  }, [startTime, deadlineTime]);
+
+  if (isExpired) return null;
 
   return (
     <span style={{ 
@@ -574,6 +584,21 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
                               r.timerStartedAt
                             );
 
+                            let deadlineDate: Date | null = null;
+                            if (activeRequest && task.dueDate) {
+                              let combined = task.dueDate;
+                              if (!combined.includes('T')) {
+                                combined = `${combined}T${task.dueTime || '18:00'}`;
+                              }
+                              if (!combined.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(combined)) {
+                                if ((combined.match(/:/g) || []).length === 1) {
+                                  combined = `${combined}:00`;
+                                }
+                                combined = `${combined}+05:30`;
+                              }
+                              deadlineDate = new Date(combined);
+                            }
+
                             return (
                               <span key={empId} className="assignee-pill" style={{ 
                                 fontSize: '0.72rem', 
@@ -582,7 +607,7 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
                                 alignItems: 'center'
                               }}>
                                 {name}
-                                {activeRequest && <Stopwatch startTime={activeRequest.timerStartedAt} />}
+                                {activeRequest && <Stopwatch startTime={activeRequest.timerStartedAt} deadlineTime={deadlineDate} />}
                               </span>
                             );
                           })
