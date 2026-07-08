@@ -1741,16 +1741,11 @@ function DocumentReference({
           onClick={handleUploadClick}
           title={`Upload ${label} file to Google Drive`}
           type="button"
-          style={{
-            background: isUploading ? "var(--accent-dim)" : "var(--accent)",
-            color: "white",
-            borderColor: "transparent"
-          }}
         >
           {isUploading ? (
-            <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+            <Loader2 size={14} className="animate-spin" aria-hidden="true" style={{ color: 'var(--green)' }} />
           ) : (
-            <Upload size={14} aria-hidden="true" />
+            <Upload size={14} aria-hidden="true" style={{ color: 'var(--green)' }} />
           )}
           <span>{isUploading ? "Uploading..." : "Upload"}</span>
         </button>
