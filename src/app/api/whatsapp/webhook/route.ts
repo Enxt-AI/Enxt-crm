@@ -323,7 +323,10 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
         try {
           const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
           const tasksContext = employeeTasks.length > 0
-            ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status}, Current Deadl            const prompt = isAdmin ? `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
+            ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status}, Current Deadline: ${t.due_date} at ${t.due_time || '18:00'})`).join('\n')
+            : 'No active tasks.';
+
+          const prompt = isAdmin ? `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
 You are speaking to the Admin/Manager named ${employeeName}.
 
 Context:
