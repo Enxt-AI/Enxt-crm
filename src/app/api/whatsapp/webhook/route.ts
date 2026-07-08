@@ -109,6 +109,27 @@ async function saveMessageToDB(from: string, employeeName: string, text: string,
   }
 }
 
+async function logDiagnostic(info: any) {
+  try {
+    const { data } = await supabase
+      .from('app_data')
+      .select('data')
+      .eq('key', 'webhook_logs')
+      .single();
+    let logs = (data?.data) || [];
+    logs.push({
+      timestamp: new Date().toISOString(),
+      ...info
+    });
+    if (logs.length > 50) {
+      logs = logs.slice(-50);
+    }
+    await supabase.from('app_data').upsert({ key: 'webhook_logs', data: logs });
+  } catch (e) {
+    console.error("[whatsapp webhook] Failed to log diagnostic:", e);
+  }
+}
+
 async function processWebhookPayload(payload: any) {
   try {
     // Extract message data
@@ -299,6 +320,17 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
     const isExtensionRequestText = /\b(extend|extension|time\s*change|delay|more\s*time|extra\s*time|hours|days)\b/i.test(lowerText);
     let newStatus: 'Pending' | 'In Progress' | 'Completed' | 'Blocked' | null = null;
 
+    await logDiagnostic({
+      event: 'message_received',
+      from,
+      employeeName,
+      employeeId: employee?.id,
+      textBody,
+      isExtensionRequestText,
+      employeeTasksCount: employeeTasks.length,
+      employeeTasks: employeeTasks.map((t: any) => ({ id: t.id, title: t.title }))
+    });
+
     if (!isAdmin && !isExtensionRequestText) {
       if (/\b(completed|done|complete|finished|check)\b/i.test(lowerText)) {
         newStatus = 'Completed';
@@ -411,6 +443,12 @@ Your Guidelines:
           } catch (e) {
           }
 
+          await logDiagnostic({
+            event: 'gemini_response',
+            rawAnswer,
+            parsed
+          });
+
           if (isAdmin && parsed && parsed.isTaskAssignment) {
             try {
               const targetName = parsed.assigneeName;
@@ -492,11 +530,20 @@ Your Guidelines:
 
           if (parsed && parsed.isTimeChangeRequest) {
             try {
-              // Find matched task
+              // Find matched task safely
+              const searchTitle = String(parsed.taskTitle || '').toLowerCase();
               const matchedTask = employeeTasks.find((t: any) => 
-                  t.title.toLowerCase().includes(parsed.taskTitle.toLowerCase()) ||
-                  parsed.taskTitle.toLowerCase().includes(t.title.toLowerCase())
+                  t.title.toLowerCase().includes(searchTitle) ||
+                  (searchTitle && searchTitle.includes(t.title.toLowerCase()))
                 ) || employeeTasks[0]; // fallback to first task if mismatch
+
+                await logDiagnostic({
+                  event: 'time_change_attempt',
+                  matchedTaskId: matchedTask?.id,
+                  matchedTaskTitle: matchedTask?.title,
+                  daysToAdd: parsed.daysToAdd,
+                  hoursToAdd: parsed.hoursToAdd
+                });
 
                 if (matchedTask) {
                   const days = Number(parsed.daysToAdd) || 0;
@@ -526,7 +573,7 @@ Your Guidelines:
                     employeeName: employeeName,
                     requestedDueDate: dueDate,
                     requestedDueTime: dueTime,
-                    reason: parsed.reason,
+                    reason: parsed.reason || '',
                     status: 'pending',
                     createdAt: new Date().toISOString()
                   };
