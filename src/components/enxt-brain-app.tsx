@@ -1679,6 +1679,102 @@ function hasCompleteEmployeeDocs(employee: BrainDocument) {
   return requiredStatuses.every((status) => status === "Available");
 }
 
+async function uploadFileDirectlyToGoogleDrive(file: File): Promise<{
+  success: boolean;
+  fileId: string;
+  fileName: string;
+  webViewLink: string;
+  mocked?: boolean;
+}> {
+  const tokenRes = await fetch("/api/documents/upload");
+  if (!tokenRes.ok) {
+    throw new Error(`Token vendor returned status ${tokenRes.status}`);
+  }
+  const tokenData = await tokenRes.json();
+
+  if (tokenData.mocked) {
+    console.log("Using client-side sandbox simulation for file upload");
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const mockFileId = `sim-drive-${Date.now()}`;
+    return {
+      success: true,
+      fileId: mockFileId,
+      fileName: file.name,
+      webViewLink: `https://drive.google.com/file/d/${mockFileId}/view?usp=drivesdk`,
+      mocked: true
+    };
+  }
+
+  const { accessToken, folderId } = tokenData;
+  if (!accessToken) {
+    throw new Error("Google Access Token is empty");
+  }
+
+  const metadata: any = {
+    name: file.name
+  };
+  if (folderId) {
+    metadata.parents = [folderId];
+  }
+
+  const boundary = '-------314159265358979323846';
+  const delimiter = `\r\n--${boundary}\r\n`;
+  const closeDelimiter = `\r\n--${boundary}--`;
+
+  const metadataPart = 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata);
+  const mediaPartHeader = `Content-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`;
+
+  const blob = new Blob([
+    delimiter,
+    metadataPart,
+    delimiter,
+    mediaPartHeader,
+    file,
+    closeDelimiter
+  ], { type: `multipart/related; boundary=${boundary}` });
+
+  const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: blob
+  });
+
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text();
+    throw new Error(`Google Upload API Error: ${uploadRes.status} ${errText}`);
+  }
+
+  const driveData = await uploadRes.json();
+
+  try {
+    const permRes = await fetch(`https://www.googleapis.com/drive/v3/files/${driveData.id}/permissions?supportsAllDrives=true`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        role: 'reader',
+        type: 'anyone'
+      })
+    });
+    if (!permRes.ok) {
+      console.warn("Failed to set file permission:", await permRes.text());
+    }
+  } catch (permErr) {
+    console.warn("Failed to set open read permission for Drive file:", permErr);
+  }
+
+  return {
+    success: true,
+    fileId: driveData.id,
+    fileName: driveData.name,
+    webViewLink: driveData.webViewLink
+  };
+}
+
 function DocumentReference({
   employee,
   onUpdateEmployee,
@@ -1726,17 +1822,9 @@ function DocumentReference({
     if (!file) return;
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("employeeId", employee.id);
-    formData.append("documentType", label);
 
     try {
-      const res = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData
-      });
-      const data = await res.json();
+      const data = await uploadFileDirectlyToGoogleDrive(file);
       if (data.success) {
         const { textKey, urlKey } = getFieldKeys(label);
         if (textKey && urlKey) {
@@ -1767,8 +1855,6 @@ function DocumentReference({
 
           onUpdateEmployee(employee.id, updatedFields);
         }
-      } else {
-        alert(`Upload failed: ${data.error}`);
       }
     } catch (err: any) {
       alert(`Upload error: ${err.message || err}`);
@@ -1956,17 +2042,9 @@ function ProjectDocumentReference({
     if (!file) return;
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("employeeId", project.id);
-    formData.append("documentType", label);
 
     try {
-      const res = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData
-      });
-      const data = await res.json();
+      const data = await uploadFileDirectlyToGoogleDrive(file);
       if (data.success) {
         const { textKey, urlKey } = getFieldKeys(label);
         if (textKey && urlKey) {
@@ -1975,8 +2053,6 @@ function ProjectDocumentReference({
             [urlKey]: data.webViewLink
           });
         }
-      } else {
-        alert(`Upload failed: ${data.error}`);
       }
     } catch (err: any) {
       alert(`Upload error: ${err.message || err}`);

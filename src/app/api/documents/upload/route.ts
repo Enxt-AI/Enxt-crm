@@ -21,6 +21,37 @@ async function refreshGoogleAccessToken(clientId: string, clientSecret: string, 
   return data.access_token;
 }
 
+export async function GET() {
+  try {
+    let clientId = process.env.GOOGLE_CLIENT_ID;
+    let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    let refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+    let folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+
+    if (clientId) clientId = clientId.trim().replace(/^['"]|['"]$/g, '');
+    if (clientSecret) clientSecret = clientSecret.trim().replace(/^['"]|['"]$/g, '');
+    if (refreshToken) refreshToken = refreshToken.trim().replace(/^['"]|['"]$/g, '');
+    if (folderId) folderId = folderId.trim().replace(/^['"]|['"]$/g, '');
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      return NextResponse.json({
+        mocked: true,
+        folderId: "mock-folder"
+      });
+    }
+
+    const accessToken = await refreshGoogleAccessToken(clientId, clientSecret, refreshToken);
+
+    return NextResponse.json({
+      accessToken,
+      folderId
+    });
+  } catch (error: any) {
+    console.error("Failed to get Google Access Token:", error);
+    return NextResponse.json({ error: error?.message || 'Failed to get access token' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
