@@ -24,6 +24,7 @@ import {
   SquareKanban,
   Users,
   UserPlus,
+  FolderPlus,
   X,
   CreditCard,
   ClipboardList,
@@ -149,6 +150,7 @@ function AnimatedValue({ value }: { value: string | number }) {
 const leadStages = ["Old Leads", "Contacts", "Proposal", "Project Started", "Completed"] as const;
 export default function EnxtBrainApp() {
   const [activeView, setActiveView] = useState<View>("dashboard");
+  const [viewedDocument, setViewedDocument] = useState<ViewedEmployeeDocument | null>(null);
   const [documents, setDocuments] = useState<BrainDocument[]>(brainDocuments);
   const [isInitializing, setIsInitializing] = useState(true);
   const [loadSuccess, setLoadSuccess] = useState(false);
@@ -445,6 +447,71 @@ export default function EnxtBrainApp() {
     );
   };
 
+  const updateProject = (projectId: string, fields: Record<string, string>) => {
+    setDocuments((current) =>
+      current.map((document) => {
+        if (document.id !== projectId) {
+          return document;
+        }
+
+        const updatedFields = {
+          ...document.fields,
+          ...fields
+        };
+
+        const cleanBody = (document.body || "")
+          .replace(/\n\nPortal update:[\s\S]*?(?=\n\nPortal update:|$)/g, "")
+          .trimEnd();
+
+        return {
+          ...document,
+          updatedAt: new Date().toISOString().slice(0, 10),
+          fields: updatedFields,
+          body: `${cleanBody}\n\nPortal update:\n- Project record edited from Enxt Brain on ${new Date()
+            .toISOString()
+            .slice(0, 10)}.`
+        };
+      })
+    );
+  };
+
+  const addProject = (fields: Record<string, string>) => {
+    setDocuments((current) => {
+      const newId = `proj-${fields.title?.toLowerCase().replace(/\s+/g, "-") || Date.now()}`;
+      const today = new Date().toISOString().slice(0, 10);
+      
+      const newProj: BrainDocument = {
+        id: newId,
+        type: "project",
+        title: fields.title || "New Project",
+        status: fields.phase || "Discovery",
+        owner: fields.owner || "Unassigned",
+        updatedAt: today,
+        tags: ["ai-project", fields.phase || "Discovery", fields.health || "Green"],
+        fields: {
+          client: fields.client || "",
+          phase: fields.phase || "Discovery",
+          owner: fields.owner || "Unassigned",
+          health: fields.health || "Green",
+          priority: fields.priority || "Medium",
+          dueDate: fields.dueDate || today,
+          budgetInr: fields.budgetInr ? parseInt(fields.budgetInr) : 0,
+          progress: fields.progress ? parseInt(fields.progress) : 0,
+          risk: fields.risk || "",
+          invoiceName: "",
+          invoiceUrl: "",
+          docsName: "",
+          docsUrl: "",
+          billsName: "",
+          billsUrl: ""
+        },
+        body: fields.body || ""
+      };
+      
+      return [...current, newProj];
+    });
+  };
+
   const addEmployee = (fields: EmployeeEditState) => {
     setDocuments((current) => {
       const monthlySalaryInr = salaryInputToNumber(fields.currentSalaryRaw);
@@ -679,10 +746,10 @@ export default function EnxtBrainApp() {
             )}
 
             {activeView === "employees" && (
-              <EmployeesView employees={employees} projects={projects} monthlyPayroll={monthlyPayroll} onUpdateEmployee={updateEmployee} onAddEmployee={addEmployee} />
+              <EmployeesView employees={employees} projects={projects} monthlyPayroll={monthlyPayroll} onUpdateEmployee={updateEmployee} onAddEmployee={addEmployee} onViewDocument={setViewedDocument} />
             )}
 
-            {activeView === "projects" && <ProjectsView projects={projects} selectDocument={selectDocument} />}
+            {activeView === "projects" && <ProjectsView projects={projects} selectDocument={selectDocument} onUpdateProject={updateProject} onViewDocument={setViewedDocument} onAddProject={addProject} />}
 
             {activeView === "crm" && <CrmView leads={leads} onUpdateLead={updateLead} onAddLead={addLead} onDeleteLead={deleteLead} />}
 
@@ -923,6 +990,10 @@ export default function EnxtBrainApp() {
           </button>
         </div>
       )}
+
+      {viewedDocument && (
+        <EmployeeDocumentViewer document={viewedDocument} onClose={() => setViewedDocument(null)} />
+      )}
     </div>
   );
 
@@ -1037,18 +1108,19 @@ function EmployeesView({
   projects,
   monthlyPayroll,
   onUpdateEmployee,
-  onAddEmployee
+  onAddEmployee,
+  onViewDocument
 }: {
   employees: BrainDocument[];
   projects: BrainDocument[];
   monthlyPayroll: number;
   onUpdateEmployee: (employeeId: string, fields: EmployeeEditState) => void;
   onAddEmployee: (fields: EmployeeEditState) => void;
+  onViewDocument: (document: ViewedEmployeeDocument) => void;
 }) {
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editFields, setEditFields] = useState<EmployeeEditState>({});
-  const [viewedDocument, setViewedDocument] = useState<ViewedEmployeeDocument | null>(null);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [documentFilter, setDocumentFilter] = useState("All");
@@ -1530,7 +1602,7 @@ function EmployeesView({
                 onUpdateEmployee={onUpdateEmployee}
                 employeeName={asText(employee, "name")}
                 label="Offer"
-                onView={setViewedDocument}
+                onView={onViewDocument}
                 status={asText(employee, "offerLetterStatus")}
                 url={asText(employee, "offerLetterUrl")}
                 value={asText(employee, "offerLetter")}
@@ -1540,7 +1612,7 @@ function EmployeesView({
                 onUpdateEmployee={onUpdateEmployee}
                 employeeName={asText(employee, "name")}
                 label="PAN"
-                onView={setViewedDocument}
+                onView={onViewDocument}
                 status={asText(employee, "panCardStatus")}
                 url={asText(employee, "panCardUrl")}
                 value={asText(employee, "panCard")}
@@ -1550,7 +1622,7 @@ function EmployeesView({
                 onUpdateEmployee={onUpdateEmployee}
                 employeeName={asText(employee, "name")}
                 label="Aadhaar"
-                onView={setViewedDocument}
+                onView={onViewDocument}
                 status={asText(employee, "aadhaarCardStatus")}
                 url={asText(employee, "aadhaarCardUrl")}
                 value={asText(employee, "aadhaarCard")}
@@ -1560,7 +1632,7 @@ function EmployeesView({
                 onUpdateEmployee={onUpdateEmployee}
                 employeeName={asText(employee, "name")}
                 label="Bank"
-                onView={setViewedDocument}
+                onView={onViewDocument}
                 status={asText(employee, "bankDetailsStatus")}
                 url={asText(employee, "bankDetailsUrl")}
                 value={asText(employee, "bankDetailsDisplay")}
@@ -1569,8 +1641,6 @@ function EmployeesView({
           ))}
         </div>
       </div>
-
-      {viewedDocument && <EmployeeDocumentViewer document={viewedDocument} onClose={() => setViewedDocument(null)} />}
     </section>
   );
 }
@@ -1843,39 +1913,339 @@ function getPreviewUrl(url: string) {
   return trimmed;
 }
 
+function ProjectDocumentReference({
+  project,
+  onUpdateProject,
+  label,
+  value,
+  url,
+  onView
+}: {
+  project: BrainDocument;
+  onUpdateProject: (projectId: string, fields: any) => void;
+  label: string;
+  value: string;
+  url: string;
+  onView: (document: ViewedEmployeeDocument) => void;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const status = url ? "Available" : "Missing";
+  const available = status === "Available";
+
+  const getFieldKeys = (docLabel: string) => {
+    switch (docLabel) {
+      case "Invoice":
+        return { textKey: "invoiceName", urlKey: "invoiceUrl" };
+      case "Bills":
+        return { textKey: "billsName", urlKey: "billsUrl" };
+      case "Necessary Docs":
+        return { textKey: "docsName", urlKey: "docsUrl" };
+      default:
+        return { textKey: "", urlKey: "" };
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("employeeId", project.id);
+    formData.append("documentType", label);
+
+    try {
+      const res = await fetch("/api/documents/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        const { textKey, urlKey } = getFieldKeys(label);
+        if (textKey && urlKey) {
+          onUpdateProject(project.id, {
+            [textKey]: data.fileName,
+            [urlKey]: data.webViewLink
+          });
+        }
+      } else {
+        alert(`Upload failed: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Upload error: ${err.message || err}`);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="doc-ref-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "2px", overflow: "hidden", textOverflow: "ellipsis", marginRight: "10px" }}>
+        <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--ink)" }}>{label}</span>
+        <span style={{ fontSize: "0.75rem", color: available ? "var(--green)" : "var(--muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }} title={available ? value : "No document uploaded"}>
+          {available ? value : "No document uploaded"}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+        <button
+          className="doc-view-button"
+          disabled={!available}
+          onClick={() => onView({ employeeName: project.title, label, status, value: value || `${label}.pdf`, url })}
+          title={`View ${label}`}
+          type="button"
+          style={{ minHeight: "28px", padding: "0 8px", background: available ? "white" : "transparent" }}
+        >
+          <Eye size={12} aria-hidden="true" />
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+        />
+
+        <button
+          className="doc-view-button"
+          disabled={isUploading}
+          onClick={handleUploadClick}
+          title={`Upload ${label}`}
+          type="button"
+          style={{ minHeight: "28px", padding: "0 8px", background: isUploading ? "transparent" : "white" }}
+        >
+          {isUploading ? (
+            <Loader2 size={12} className="animate-spin" aria-hidden="true" style={{ color: 'var(--green)' }} />
+          ) : (
+            <Upload size={12} aria-hidden="true" style={{ color: 'var(--green)' }} />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectAddModal({
+  onClose,
+  onSave
+}: {
+  onClose: () => void;
+  onSave: (fields: Record<string, string>) => void;
+}) {
+  const [fields, setFields] = useState<Record<string, string>>({
+    title: "",
+    client: "",
+    phase: "Discovery",
+    owner: "",
+    health: "Green",
+    priority: "Medium",
+    dueDate: new Date().toISOString().slice(0, 10),
+    budgetInr: "",
+    progress: "0",
+    risk: "",
+    body: ""
+  });
+
+  const updateField = (key: string, value: string) => {
+    setFields((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleSave = () => {
+    if (!fields.title) {
+      alert("Project Title is required!");
+      return;
+    }
+    onSave(fields);
+    onClose();
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div className="employee-edit-panel employee-edit-modal" role="dialog" aria-modal="true" aria-label="Add project">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Project details</p>
+            <h3>Add New Project</h3>
+          </div>
+          <button className="icon-button" onClick={onClose} title="Close editor" type="button">
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="employee-edit-grid" style={{ maxHeight: "calc(100vh - 220px)", overflowY: "auto", paddingRight: "10px" }}>
+          <EditableField label="Project Title" value={fields.title} onChange={(value) => updateField("title", value)} />
+          <EditableField label="Client Name" value={fields.client} onChange={(value) => updateField("client", value)} />
+          <EditableField label="Project Owner / PM" value={fields.owner} onChange={(value) => updateField("owner", value)} />
+          
+          <label className="field-control">
+            <span>Phase</span>
+            <select value={fields.phase} onChange={(e) => updateField("phase", e.target.value)}>
+              <option value="Discovery">Discovery</option>
+              <option value="Prototype">Prototype</option>
+              <option value="Build">Build</option>
+              <option value="QA">QA</option>
+              <option value="Production">Production</option>
+            </select>
+          </label>
+
+          <label className="field-control">
+            <span>Project Health</span>
+            <select value={fields.health} onChange={(e) => updateField("health", e.target.value)}>
+              <option value="Green">Green</option>
+              <option value="Amber">Amber</option>
+              <option value="Red">Red</option>
+            </select>
+          </label>
+
+          <label className="field-control">
+            <span>Priority</span>
+            <select value={fields.priority} onChange={(e) => updateField("priority", e.target.value)}>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </label>
+
+          <EditableField label="Due Date" value={fields.dueDate} onChange={(value) => updateField("dueDate", value)} />
+          <EditableField label="Budget (INR)" value={fields.budgetInr} onChange={(value) => updateField("budgetInr", value)} />
+          <EditableField label="Progress (0-100)" value={fields.progress} onChange={(value) => updateField("progress", value)} />
+          
+          <label className="field-control" style={{ gridColumn: "1 / -1" }}>
+            <span>Risks / Flags</span>
+            <textarea 
+              value={fields.risk} 
+              onChange={(e) => updateField("risk", e.target.value)}
+              className="field-textarea"
+              style={{ width: "100%", minHeight: "60px", padding: "8px", borderRadius: "6px", border: "1px solid var(--line)" }}
+            />
+          </label>
+
+          <label className="field-control" style={{ gridColumn: "1 / -1" }}>
+            <span>Project Objective & Scope</span>
+            <textarea 
+              value={fields.body} 
+              onChange={(e) => updateField("body", e.target.value)}
+              className="field-textarea"
+              style={{ width: "100%", minHeight: "100px", padding: "8px", borderRadius: "6px", border: "1px solid var(--line)" }}
+              placeholder="Objective: ...&#10;&#10;Scope: ..."
+            />
+          </label>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px", borderTop: "1px solid var(--line)", paddingTop: "14px" }}>
+          <button className="text-button" onClick={onClose} type="button">
+            Cancel
+          </button>
+          <button className="primary-button" onClick={handleSave} type="button">
+            Add Project
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProjectsView({
   projects,
-  selectDocument
+  selectDocument,
+  onUpdateProject,
+  onViewDocument,
+  onAddProject
 }: {
   projects: BrainDocument[];
   selectDocument: (document: BrainDocument) => void;
+  onUpdateProject: (projectId: string, fields: Record<string, string>) => void;
+  onViewDocument: (document: ViewedEmployeeDocument) => void;
+  onAddProject: (fields: Record<string, string>) => void;
 }) {
+  const [isAddingNewProject, setIsAddingNewProject] = useState(false);
+
   return (
-    <section className="project-grid">
-      {projects.map((project) => (
-        <article className="project-card" key={project.id}>
-          <div className="project-card-top">
-            <div>
-              <p className="eyebrow">{asText(project, "client")}</p>
-              <h3>{project.title}</h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+      <div className="employee-title-block" style={{ marginBottom: "0px" }}>
+        <div>
+          <p className="eyebrow">Projects</p>
+          <h3>Active Projects</h3>
+        </div>
+        <button
+          className="primary-button"
+          onClick={() => setIsAddingNewProject(true)}
+          type="button"
+        >
+          <FolderPlus size={16} aria-hidden="true" />
+          <span style={{ marginLeft: "6px" }}>Add Project</span>
+        </button>
+      </div>
+
+      <section className="project-grid">
+        {projects.map((project) => (
+          <article className="project-card" key={project.id} style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            <div className="project-card-top">
+              <div>
+                <p className="eyebrow">{asText(project, "client")}</p>
+                <h3>{project.title}</h3>
+              </div>
+              <StatusBadge tone={asText(project, "health") === "Green" ? "green" : "amber"}>{asText(project, "health")}</StatusBadge>
             </div>
-            <StatusBadge tone={asText(project, "health") === "Green" ? "green" : "amber"}>{asText(project, "health")}</StatusBadge>
-          </div>
-          <p>{project.body.split("\n\n")[0].replace("Objective: ", "")}</p>
-          <div className="project-meta">
-            <span>{asText(project, "phase")}</span>
-            <span>{asText(project, "owner")}</span>
-            <span>{asText(project, "dueDate")}</span>
-          </div>
-          <div className="progress-track" aria-label={`${project.title} progress`}>
-            <span style={{ width: `${asNumber(project, "progress")}%` }} />
-          </div>
-          <button className="text-button" onClick={() => selectDocument(project)} type="button">
-            Open document
-          </button>
-        </article>
-      ))}
-    </section>
+            <p style={{ flexGrow: 1 }}>{project.body.split("\n\n")[0].replace("Objective: ", "")}</p>
+            <div className="project-meta">
+              <span>{asText(project, "phase")}</span>
+              <span>{asText(project, "owner")}</span>
+              <span>{asText(project, "dueDate")}</span>
+            </div>
+            <div className="progress-track" aria-label={`${project.title} progress`} style={{ marginBottom: "14px" }}>
+              <span style={{ width: `${asNumber(project, "progress")}%` }} />
+            </div>
+
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: "10px", marginBottom: "12px" }}>
+              <h4 style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--ink-light, #666)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Project Documents</h4>
+              <ProjectDocumentReference
+                project={project}
+                onUpdateProject={onUpdateProject}
+                label="Invoice"
+                value={asText(project, "invoiceName")}
+                url={asText(project, "invoiceUrl")}
+                onView={onViewDocument}
+              />
+              <ProjectDocumentReference
+                project={project}
+                onUpdateProject={onUpdateProject}
+                label="Necessary Docs"
+                value={asText(project, "docsName")}
+                url={asText(project, "docsUrl")}
+                onView={onViewDocument}
+              />
+              <ProjectDocumentReference
+                project={project}
+                onUpdateProject={onUpdateProject}
+                label="Bills"
+                value={asText(project, "billsName")}
+                url={asText(project, "billsUrl")}
+                onView={onViewDocument}
+              />
+            </div>
+
+            <button className="text-button" onClick={() => selectDocument(project)} type="button" style={{ marginTop: "auto", width: "100%", textAlign: "center" }}>
+              Open document
+            </button>
+          </article>
+        ))}
+      </section>
+
+      {isAddingNewProject && createPortal(
+        <ProjectAddModal
+          onClose={() => setIsAddingNewProject(false)}
+          onSave={onAddProject}
+        />,
+        document.body
+      )}
+    </div>
   );
 }
 

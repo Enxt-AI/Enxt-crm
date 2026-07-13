@@ -1,40 +1,15 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 
-// Helper to get access token from Google OAuth2 using JWT
-async function getGoogleAccessToken(email: string, privateKey: string) {
-  // Replace double backslashes in private key (often happens with environment variables)
-  const cleanKey = privateKey.replace(/\\n/g, '\n');
-  const header = {
-    alg: 'RS256',
-    typ: 'JWT'
-  };
-  
-  const now = Math.floor(Date.now() / 1000);
-  const claimSet = {
-    iss: email,
-    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now
-  };
-  
-  const base64Header = Buffer.from(JSON.stringify(header)).toString('base64url');
-  const base64ClaimSet = Buffer.from(JSON.stringify(claimSet)).toString('base64url');
-  const signatureInput = `${base64Header}.${base64ClaimSet}`;
-  
-  const signer = crypto.createSign('RSA-SHA256');
-  signer.update(signatureInput);
-  const signature = signer.sign(cleanKey, 'base64url');
-  
-  const jwt = `${signatureInput}.${signature}`;
-  
+// Helper to get access token from Google OAuth2 using a Refresh Token
+async function refreshGoogleAccessToken(clientId: string, clientSecret: string, refreshToken: string) {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
     })
   });
   
@@ -57,23 +32,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    let email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    let privateKey = process.env.GOOGLE_PRIVATE_KEY;
+    let clientId = process.env.GOOGLE_CLIENT_ID;
+    let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    let refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
     let folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
-    // Automatically strip surrounding quotes if they were copied into Vercel settings
-    if (email) email = email.trim().replace(/^['"]|['"]$/g, '');
-    if (privateKey) privateKey = privateKey.trim().replace(/^['"]|['"]$/g, '');
+    // Automatically strip surrounding quotes if they were copied into settings
+    if (clientId) clientId = clientId.trim().replace(/^['"]|['"]$/g, '');
+    if (clientSecret) clientSecret = clientSecret.trim().replace(/^['"]|['"]$/g, '');
+    if (refreshToken) refreshToken = refreshToken.trim().replace(/^['"]|['"]$/g, '');
     if (folderId) folderId = folderId.trim().replace(/^['"]|['"]$/g, '');
 
-    // Fallback: If credentials are not set, return a mock successful upload to let the user know they need to configure env variables
-    if (!email || !privateKey) {
-      console.warn("GOOGLE_SERVICE_ACCOUNT_EMAIL or GOOGLE_PRIVATE_KEY is missing. Using fallback mock upload.");
+    // Fallback: If credentials are not set, return a mock successful upload
+    if (!clientId || !clientSecret || !refreshToken) {
+      console.warn("GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or GOOGLE_REFRESH_TOKEN is missing. Using fallback mock upload.");
       
       // Simulate slow network upload
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const mockFileId = `mock-drive-${Date.now()}`;
+      const mockFileId = `sim-drive-${Date.now()}`;
       return NextResponse.json({
         success: true,
         fileId: mockFileId,
@@ -89,7 +66,7 @@ export async function POST(request: Request) {
     const fileBuffer = Buffer.from(arrayBuffer);
 
     // Get access token
-    const accessToken = await getGoogleAccessToken(email, privateKey);
+    const accessToken = await refreshGoogleAccessToken(clientId, clientSecret, refreshToken);
 
     // Create Drive upload metadata
     const metadata: any = {
