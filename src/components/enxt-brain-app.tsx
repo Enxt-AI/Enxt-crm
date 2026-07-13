@@ -26,6 +26,8 @@ import {
   UserPlus,
   FolderPlus,
   X,
+  Plus,
+  Trash2,
   CreditCard,
   ClipboardList,
   Activity,
@@ -459,12 +461,17 @@ export default function EnxtBrainApp() {
           ...fields
         };
 
-        const cleanBody = (document.body || "")
+        const titleVal = fields.title !== undefined ? fields.title : document.title;
+        const bodyVal = fields.body !== undefined ? fields.body : document.body;
+
+        const cleanBody = (bodyVal || "")
           .replace(/\n\nPortal update:[\s\S]*?(?=\n\nPortal update:|$)/g, "")
           .trimEnd();
 
         return {
           ...document,
+          title: titleVal,
+          status: fields.phase || document.status,
           updatedAt: new Date().toISOString().slice(0, 10),
           fields: updatedFields,
           body: `${cleanBody}\n\nPortal update:\n- Project record edited from Enxt Brain on ${new Date()
@@ -1904,6 +1911,47 @@ function DocumentReference({
             <Upload size={14} aria-hidden="true" style={{ color: 'var(--green)' }} />
           )}
         </button>
+
+        <button
+          className="doc-view-button"
+          disabled={!available}
+          onClick={() => {
+            if (!confirm(`Are you sure you want to delete the ${label} document?`)) return;
+            const { textKey, urlKey } = getFieldKeys(label);
+            if (textKey && urlKey) {
+              const currentFields = {
+                name: asText(employee, "name"),
+                status: asText(employee, "status"),
+                currentSalaryRaw: asText(employee, "currentSalaryRaw"),
+                updatedStipendRaw: asText(employee, "updatedStipendRaw"),
+                oldStipendRaw: asText(employee, "oldStipendRaw"),
+                dateOfJoining: asText(employee, "dateOfJoining"),
+                dateOfLeaving: asText(employee, "dateOfLeaving"),
+                offerLetter: asText(employee, "offerLetter"),
+                panCard: asText(employee, "panCard"),
+                aadhaarCard: asText(employee, "aadhaarCard"),
+                bankDetails: asText(employee, "bankDetails"),
+                offerLetterUrl: asText(employee, "offerLetterUrl"),
+                panCardUrl: asText(employee, "panCardUrl"),
+                aadhaarCardUrl: asText(employee, "aadhaarCardUrl"),
+                bankDetailsUrl: asText(employee, "bankDetailsUrl"),
+                phone: asText(employee, "phone")
+              };
+
+              const updatedFields = {
+                ...currentFields,
+                [textKey]: "",
+                [urlKey]: ""
+              };
+
+              onUpdateEmployee(employee.id, updatedFields);
+            }
+          }}
+          title={`Delete ${label}`}
+          type="button"
+        >
+          <Trash2 size={14} aria-hidden="true" style={{ color: available ? "var(--red)" : "var(--muted)" }} />
+        </button>
       </div>
     </div>
   );
@@ -2104,6 +2152,146 @@ function ProjectDocumentReference({
             <Upload size={12} aria-hidden="true" style={{ color: 'var(--green)' }} />
           )}
         </button>
+
+        <button
+          className="doc-view-button"
+          disabled={!available}
+          onClick={() => {
+            if (!confirm(`Are you sure you want to delete the ${label} document?`)) return;
+            const { textKey, urlKey } = getFieldKeys(label);
+            if (textKey && urlKey) {
+              onUpdateProject(project.id, {
+                [textKey]: "",
+                [urlKey]: ""
+              });
+            }
+          }}
+          title={`Delete ${label}`}
+          type="button"
+          style={{ minHeight: "28px", padding: "0 8px", background: "transparent", border: "none" }}
+        >
+          <Trash2 size={12} aria-hidden="true" style={{ color: available ? "var(--red)" : "var(--muted)" }} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectCustomDocumentReference({
+  project,
+  onUpdateProject,
+  docItem,
+  onView,
+  onDelete
+}: {
+  project: BrainDocument;
+  onUpdateProject: (projectId: string, fields: any) => void;
+  docItem: { id: string; label: string; fileName: string; fileUrl: string };
+  onView: (document: ViewedEmployeeDocument) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const available = !!docItem.fileUrl;
+  const status = available ? "Available" : "Missing";
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+
+    try {
+      const data = await uploadFileDirectlyToGoogleDrive(file);
+      if (data.success) {
+        let rawCustomDocs = project.fields.customDocs;
+        let customDocs: any[] = [];
+        if (typeof rawCustomDocs === "string") {
+          try { customDocs = JSON.parse(rawCustomDocs); } catch (_) {}
+        } else if (Array.isArray(rawCustomDocs)) {
+          customDocs = rawCustomDocs;
+        }
+
+        const updatedCustomDocs = customDocs.map((item: any) => {
+          if (item.id === docItem.id) {
+            return {
+              ...item,
+              fileName: data.fileName,
+              fileUrl: data.webViewLink
+            };
+          }
+          return item;
+        });
+
+        onUpdateProject(project.id, {
+          customDocs: updatedCustomDocs
+        });
+      }
+    } catch (err: any) {
+      alert(`Upload error: ${err.message || err}`);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="doc-ref-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "2px", overflow: "hidden", textOverflow: "ellipsis", marginRight: "10px" }}>
+        <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--ink)" }}>{docItem.label}</span>
+        <span style={{ fontSize: "0.75rem", color: available ? "var(--green)" : "var(--muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }} title={available ? docItem.fileName : "No document uploaded"}>
+          {available ? docItem.fileName : "No document uploaded"}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+        <button
+          className="doc-view-button"
+          disabled={!available}
+          onClick={() => onView({ employeeName: project.title, label: docItem.label, status, value: docItem.fileName || `${docItem.label}.pdf`, url: docItem.fileUrl })}
+          title={`View ${docItem.label}`}
+          type="button"
+          style={{ minHeight: "28px", padding: "0 8px", background: available ? "white" : "transparent" }}
+        >
+          <Eye size={12} aria-hidden="true" />
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+        />
+
+        <button
+          className="doc-view-button"
+          disabled={isUploading}
+          onClick={handleUploadClick}
+          title={`Upload ${docItem.label}`}
+          type="button"
+          style={{ minHeight: "28px", padding: "0 8px", background: isUploading ? "transparent" : "white" }}
+        >
+          {isUploading ? (
+            <Loader2 size={12} className="animate-spin" aria-hidden="true" style={{ color: 'var(--green)' }} />
+          ) : (
+            <Upload size={12} aria-hidden="true" style={{ color: 'var(--green)' }} />
+          )}
+        </button>
+
+        <button
+          className="doc-view-button"
+          onClick={() => onDelete(docItem.id)}
+          title={`Delete ${docItem.label}`}
+          type="button"
+          style={{ minHeight: "28px", padding: "0 8px", background: "transparent", border: "none" }}
+        >
+          <Trash2 size={12} aria-hidden="true" style={{ color: "var(--red)" }} />
+        </button>
       </div>
     </div>
   );
@@ -2227,6 +2415,126 @@ function ProjectAddModal({
   );
 }
 
+function ProjectEditModal({
+  project,
+  onClose,
+  onSave
+}: {
+  project: BrainDocument;
+  onClose: () => void;
+  onSave: (fields: Record<string, string>) => void;
+}) {
+  const [fields, setFields] = useState<Record<string, string>>({
+    title: project.title,
+    client: asText(project, "client"),
+    phase: asText(project, "phase") || "Discovery",
+    owner: asText(project, "owner") || "Unassigned",
+    health: asText(project, "health") || "Green",
+    priority: asText(project, "priority") || "Medium",
+    dueDate: asText(project, "dueDate") || new Date().toISOString().slice(0, 10),
+    budgetInr: String(asNumber(project, "budgetInr") || ""),
+    progress: String(asNumber(project, "progress") || "0"),
+    risk: asText(project, "risk") || "",
+    body: (project.body || "").replace(/\n\nPortal update:[\s\S]*/, "") // Strip portal updates
+  });
+
+  const updateField = (key: string, value: string) => {
+    setFields((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleSave = () => {
+    if (!fields.title) {
+      alert("Project Title is required!");
+      return;
+    }
+    onSave(fields);
+    onClose();
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div className="employee-edit-panel employee-edit-modal" role="dialog" aria-modal="true" aria-label="Edit project">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Project details</p>
+            <h3>Edit Project: {project.title}</h3>
+          </div>
+          <button className="icon-button" onClick={onClose} title="Close editor" type="button">
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="employee-edit-grid" style={{ maxHeight: "calc(100vh - 220px)", overflowY: "auto", paddingRight: "10px" }}>
+          <EditableField label="Project Title" value={fields.title} onChange={(value) => updateField("title", value)} />
+          <EditableField label="Client Name" value={fields.client} onChange={(value) => updateField("client", value)} />
+          <EditableField label="Project Owner / PM" value={fields.owner} onChange={(value) => updateField("owner", value)} />
+          
+          <label className="field-control">
+            <span>Phase</span>
+            <select value={fields.phase} onChange={(e) => updateField("phase", e.target.value)}>
+              <option value="Discovery">Discovery</option>
+              <option value="Prototype">Prototype</option>
+              <option value="Build">Build</option>
+              <option value="QA">QA</option>
+              <option value="Production">Production</option>
+            </select>
+          </label>
+
+          <label className="field-control">
+            <span>Project Health</span>
+            <select value={fields.health} onChange={(e) => updateField("health", e.target.value)}>
+              <option value="Green">Green</option>
+              <option value="Amber">Amber</option>
+              <option value="Red">Red</option>
+            </select>
+          </label>
+
+          <label className="field-control">
+            <span>Priority</span>
+            <select value={fields.priority} onChange={(e) => updateField("priority", e.target.value)}>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </label>
+
+          <EditableField label="Due Date" value={fields.dueDate} onChange={(value) => updateField("dueDate", value)} />
+          <EditableField label="Budget (INR)" value={fields.budgetInr} onChange={(value) => updateField("budgetInr", value)} />
+          <EditableField label="Progress (0-100)" value={fields.progress} onChange={(value) => updateField("progress", value)} />
+          
+          <label className="field-control" style={{ gridColumn: "1 / -1" }}>
+            <span>Risks / Flags</span>
+            <textarea 
+              value={fields.risk} 
+              onChange={(e) => updateField("risk", e.target.value)}
+              className="field-textarea"
+              style={{ width: "100%", minHeight: "60px", padding: "8px", borderRadius: "6px", border: "1px solid var(--line)" }}
+            />
+          </label>
+
+          <label className="field-control" style={{ gridColumn: "1 / -1" }}>
+            <span>Project Objective & Scope</span>
+            <textarea 
+              value={fields.body} 
+              onChange={(e) => updateField("body", e.target.value)}
+              className="field-textarea"
+              style={{ width: "100%", minHeight: "100px", padding: "8px", borderRadius: "6px", border: "1px solid var(--line)" }}
+              placeholder="Objective: ...&#10;&#10;Scope: ..."
+            />
+          </label>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px", borderTop: "1px solid var(--line)", paddingTop: "14px" }}>
+          <button className="text-button" onClick={onClose} type="button">
+            Cancel
+          </button>
+          <button className="primary-button" onClick={handleSave} type="button">
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProjectsView({
   projects,
   selectDocument,
@@ -2241,6 +2549,34 @@ function ProjectsView({
   onAddProject: (fields: Record<string, string>) => void;
 }) {
   const [isAddingNewProject, setIsAddingNewProject] = useState(false);
+  const [editingProject, setEditingProject] = useState<BrainDocument | null>(null);
+  const [newDocLabelProjectId, setNewDocLabelProjectId] = useState<string | null>(null);
+  const [newDocLabelText, setNewDocLabelText] = useState("");
+
+  const getCustomDocsArray = (project: BrainDocument): any[] => {
+    const raw = project.fields.customDocs;
+    if (!raw) return [];
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw);
+      } catch (_) {
+        return [];
+      }
+    }
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+    return [];
+  };
+
+  const deleteCustomDoc = (project: BrainDocument, docId: string) => {
+    if (!confirm("Are you sure you want to delete this document slot?")) return;
+    const currentDocs = getCustomDocsArray(project);
+    const updatedDocs = currentDocs.filter((item) => item.id !== docId);
+    onUpdateProject(project.id, {
+      customDocs: updatedDocs
+    });
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
@@ -2281,34 +2617,105 @@ function ProjectsView({
 
             <div style={{ borderTop: "1px solid var(--line)", paddingTop: "10px", marginBottom: "12px" }}>
               <h4 style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--ink-light, #666)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Project Documents</h4>
-              <ProjectDocumentReference
-                project={project}
-                onUpdateProject={onUpdateProject}
-                label="Invoice"
-                value={asText(project, "invoiceName")}
-                url={asText(project, "invoiceUrl")}
-                onView={onViewDocument}
-              />
-              <ProjectDocumentReference
-                project={project}
-                onUpdateProject={onUpdateProject}
-                label="Necessary Docs"
-                value={asText(project, "docsName")}
-                url={asText(project, "docsUrl")}
-                onView={onViewDocument}
-              />
-              <ProjectDocumentReference
-                project={project}
-                onUpdateProject={onUpdateProject}
-                label="Bills"
-                value={asText(project, "billsName")}
-                url={asText(project, "billsUrl")}
-                onView={onViewDocument}
-              />
+
+              {getCustomDocsArray(project).map((docItem) => (
+                <ProjectCustomDocumentReference
+                  key={docItem.id}
+                  project={project}
+                  onUpdateProject={onUpdateProject}
+                  docItem={docItem}
+                  onView={onViewDocument}
+                  onDelete={(id) => deleteCustomDoc(project, id)}
+                />
+              ))}
+
+              {newDocLabelProjectId === project.id ? (
+                <div style={{ display: "flex", gap: "6px", marginTop: "8px", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    placeholder="e.g. NDA, Contract"
+                    value={newDocLabelText}
+                    onChange={(e) => setNewDocLabelText(e.target.value)}
+                    style={{
+                      flexGrow: 1,
+                      fontSize: "0.8rem",
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      border: "1px solid var(--line)"
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      if (!newDocLabelText.trim()) return;
+                      const currentDocs = getCustomDocsArray(project);
+                      const newDoc = {
+                        id: `custom-${Date.now()}`,
+                        label: newDocLabelText.trim(),
+                        fileName: "",
+                        fileUrl: ""
+                      };
+                      onUpdateProject(project.id, {
+                        customDocs: [...currentDocs, newDoc]
+                      });
+                      setNewDocLabelProjectId(null);
+                      setNewDocLabelText("");
+                    }}
+                    className="primary-button"
+                    style={{ minHeight: "26px", fontSize: "0.75rem", padding: "0 8px" }}
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewDocLabelProjectId(null);
+                      setNewDocLabelText("");
+                    }}
+                    className="text-button"
+                    style={{ minHeight: "26px", fontSize: "0.75rem", padding: "0 6px" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setNewDocLabelProjectId(project.id);
+                    setNewDocLabelText("");
+                  }}
+                  type="button"
+                  className="add-custom-doc-btn"
+                >
+                  <Plus size={14} />
+                  <span>Add Custom Document</span>
+                </button>
+              )}
             </div>
 
-            <button className="text-button" onClick={() => selectDocument(project)} type="button" style={{ marginTop: "auto", width: "100%", textAlign: "center" }}>
-              Open document
+            <button
+              className="text-button"
+              onClick={() => setEditingProject(project)}
+              type="button"
+              style={{
+                marginTop: "auto",
+                width: "100%",
+                textAlign: "center",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                border: "1px solid var(--line)",
+                borderRadius: "6px",
+                padding: "8px 16px",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                color: "var(--ink)",
+                background: "white",
+                cursor: "pointer"
+              }}
+            >
+              <Pencil size={12} />
+              <span>Edit Details</span>
             </button>
           </article>
         ))}
@@ -2318,6 +2725,15 @@ function ProjectsView({
         <ProjectAddModal
           onClose={() => setIsAddingNewProject(false)}
           onSave={onAddProject}
+        />,
+        document.body
+      )}
+
+      {editingProject && createPortal(
+        <ProjectEditModal
+          project={editingProject}
+          onClose={() => setEditingProject(null)}
+          onSave={(fields) => onUpdateProject(editingProject.id, fields)}
         />,
         document.body
       )}

@@ -1032,6 +1032,54 @@ td span {
   text-transform: uppercase;
 }
 
+@media (max-width: 600px) {
+  .modal-backdrop {
+    padding: 10px;
+  }
+  
+  .document-viewer {
+    padding: 12px;
+    gap: 12px;
+    border-radius: 12px;
+  }
+
+  .document-preview-frame iframe {
+    height: 48vh;
+  }
+
+  .document-preview-box {
+    padding: 16px;
+    min-height: 200px;
+  }
+  
+  .document-preview-box > div {
+    min-width: 100% !important;
+  }
+}
+
+.add-custom-doc-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--green) !important;
+  background: rgba(22, 120, 79, 0.05);
+  border: 1px dashed rgba(22, 120, 79, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+}
+
+.add-custom-doc-btn:hover {
+  background: rgba(22, 120, 79, 0.1);
+  border-color: var(--green);
+}
+
 .project-grid {
   display: grid;
   gap: 14px;
