@@ -2229,7 +2229,7 @@ function ProjectCustomDocumentReference({
         });
 
         onUpdateProject(project.id, {
-          customDocs: updatedCustomDocs
+          customDocs: JSON.stringify(updatedCustomDocs)
         });
       }
     } catch (err: any) {
@@ -2574,7 +2574,7 @@ function ProjectsView({
     const currentDocs = getCustomDocsArray(project);
     const updatedDocs = currentDocs.filter((item) => item.id !== docId);
     onUpdateProject(project.id, {
-      customDocs: updatedDocs
+      customDocs: JSON.stringify(updatedDocs)
     });
   };
 
@@ -2656,7 +2656,7 @@ function ProjectsView({
                         fileUrl: ""
                       };
                       onUpdateProject(project.id, {
-                        customDocs: [...currentDocs, newDoc]
+                        customDocs: JSON.stringify([...currentDocs, newDoc])
                       });
                       setNewDocLabelProjectId(null);
                       setNewDocLabelText("");
