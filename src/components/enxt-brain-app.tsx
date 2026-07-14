@@ -1911,47 +1911,6 @@ function DocumentReference({
             <Upload size={14} aria-hidden="true" style={{ color: 'var(--green)' }} />
           )}
         </button>
-
-        <button
-          className="doc-view-button"
-          disabled={!available}
-          onClick={() => {
-            if (!confirm(`Are you sure you want to delete the ${label} document?`)) return;
-            const { textKey, urlKey } = getFieldKeys(label);
-            if (textKey && urlKey) {
-              const currentFields = {
-                name: asText(employee, "name"),
-                status: asText(employee, "status"),
-                currentSalaryRaw: asText(employee, "currentSalaryRaw"),
-                updatedStipendRaw: asText(employee, "updatedStipendRaw"),
-                oldStipendRaw: asText(employee, "oldStipendRaw"),
-                dateOfJoining: asText(employee, "dateOfJoining"),
-                dateOfLeaving: asText(employee, "dateOfLeaving"),
-                offerLetter: asText(employee, "offerLetter"),
-                panCard: asText(employee, "panCard"),
-                aadhaarCard: asText(employee, "aadhaarCard"),
-                bankDetails: asText(employee, "bankDetails"),
-                offerLetterUrl: asText(employee, "offerLetterUrl"),
-                panCardUrl: asText(employee, "panCardUrl"),
-                aadhaarCardUrl: asText(employee, "aadhaarCardUrl"),
-                bankDetailsUrl: asText(employee, "bankDetailsUrl"),
-                phone: asText(employee, "phone")
-              };
-
-              const updatedFields = {
-                ...currentFields,
-                [textKey]: "",
-                [urlKey]: ""
-              };
-
-              onUpdateEmployee(employee.id, updatedFields);
-            }
-          }}
-          title={`Delete ${label}`}
-          type="button"
-        >
-          <Trash2 size={14} aria-hidden="true" style={{ color: available ? "var(--red)" : "var(--muted)" }} />
-        </button>
       </div>
     </div>
   );
