@@ -282,10 +282,45 @@ export default function EnxtBrainApp() {
       });
   }, [documents, isInitializing, loadSuccess]);
 
-  const employees = useMemo(() => documents.filter((document) => document.type === "employee"), [documents]);
-  const projects = useMemo(() => documents.filter((document) => document.type === "project"), [documents]);
-  const clients = useMemo(() => documents.filter((document) => document.type === "client"), [documents]);
-  const leads = useMemo(() => documents.filter((document) => document.type === "lead"), [documents]);
+  const employees = useMemo(() => {
+    const list = documents.filter((document) => document.type === "employee");
+    const query = documentQuery.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((employee) => {
+      const searchable = `${employee.title} ${asText(employee, "owner")} ${asText(employee, "status")} ${employee.body}`.toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [documents, documentQuery]);
+
+  const projects = useMemo(() => {
+    const list = documents.filter((document) => document.type === "project");
+    const query = documentQuery.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((project) => {
+      const searchable = `${project.title} ${asText(project, "client")} ${asText(project, "owner")} ${asText(project, "phase")} ${project.body}`.toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [documents, documentQuery]);
+
+  const clients = useMemo(() => {
+    const list = documents.filter((document) => document.type === "client");
+    const query = documentQuery.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((client) => {
+      const searchable = `${client.title} ${client.body}`.toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [documents, documentQuery]);
+
+  const leads = useMemo(() => {
+    const list = documents.filter((document) => document.type === "lead");
+    const query = documentQuery.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((lead) => {
+      const searchable = `${asText(lead, "company")} ${asText(lead, "contactPerson")} ${asText(lead, "projectDetails")} ${asText(lead, "communicationStatus")} ${asText(lead, "nextSteps")}`.toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [documents, documentQuery]);
 
   const selectedDocument = documents.find((document) => document.id === selectedDocumentId) ?? documents[0];
   const monthlyPayroll = employees
@@ -303,7 +338,7 @@ export default function EnxtBrainApp() {
     }
 
     return documents.filter((document) => {
-      const searchable = `${document.title} ${document.type} ${document.status} ${document.owner} ${document.tags.join(
+      const searchable = `${document.title} ${document.type} ${document.status} ${document.owner} ${(document.tags || []).join(
         " "
       )} ${document.body}`.toLowerCase();
       return searchable.includes(query);
