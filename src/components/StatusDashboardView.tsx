@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { RefreshCw, Send, Clock, CheckCircle2, XCircle, AlertCircle, Calendar, FileText, Trash2 } from "lucide-react";
+import { RefreshCw, Send, Clock, CheckCircle2, XCircle, AlertCircle, Calendar, FileText, Trash2, Sunrise, Sun, Sunset, BarChart2 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
 interface StatusRequest {
@@ -27,10 +27,10 @@ interface StatusDashboardProps {
   onShowToast?: (message: string, type: "success" | "error") => void;
 }
 
-const SCHEDULE_LABELS: Record<string, { label: string; emoji: string }> = {
-  morning: { label: "10:00 AM", emoji: "🌅" },
-  midday: { label: "1:00 PM", emoji: "☀️" },
-  evening: { label: "6:00 PM", emoji: "🌆" },
+const SCHEDULE_LABELS: Record<string, { label: string; icon: any }> = {
+  morning: { label: "10:00 AM", icon: Sunrise },
+  midday: { label: "1:00 PM", icon: Sun },
+  evening: { label: "6:00 PM", icon: Sunset },
 };
 
 function formatTime(iso: string | null): string {
@@ -230,7 +230,10 @@ export default function StatusDashboardView({ onViewReport, onShowToast }: Statu
       {/* Header */}
       <div className="status-header">
         <div className="status-header-left">
-          <h2 className="status-title">📊 Employee Status Dashboard</h2>
+          <h2 className="status-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BarChart2 size={20} style={{ color: 'var(--green)' }} />
+            <span>Employee Status Dashboard</span>
+          </h2>
           <p className="status-subtitle">
             Automated project update tracking via WhatsApp 
             <span style={{ marginLeft: "8px", color: "#10b981", fontSize: "0.75rem", background: "rgba(16, 185, 129, 0.1)", padding: "2px 6px", borderRadius: "4px" }}>
@@ -277,15 +280,21 @@ export default function StatusDashboardView({ onViewReport, onShowToast }: Statu
         </div>
         <div className="status-summary-card replied">
           <span className="status-summary-number">{stats.replied}</span>
-          <span className="status-summary-label">✅ Replied</span>
+          <span className="status-summary-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <CheckCircle2 size={12} style={{ color: 'var(--green)' }} /> Replied
+          </span>
         </div>
         <div className="status-summary-card waiting">
           <span className="status-summary-number">{stats.waiting}</span>
-          <span className="status-summary-label">⏳ Waiting</span>
+          <span className="status-summary-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <Clock size={12} style={{ color: 'var(--amber)' }} /> Waiting
+          </span>
         </div>
         <div className="status-summary-card not-replied">
           <span className="status-summary-number">{stats.notReplied}</span>
-          <span className="status-summary-label">❌ Not Replied</span>
+          <span className="status-summary-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <XCircle size={12} style={{ color: 'var(--red)' }} /> Not Replied
+          </span>
         </div>
       </div>
 
@@ -297,8 +306,9 @@ export default function StatusDashboardView({ onViewReport, onShowToast }: Statu
 
           return (
             <div className="status-schedule-block" key={schedule}>
-              <h3 className="status-schedule-heading">
-                {info.emoji} {info.label} — {schedule.charAt(0).toUpperCase() + schedule.slice(1)} Check-in
+              <h3 className="status-schedule-heading" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <info.icon size={18} style={{ color: 'var(--green)' }} />
+                <span>{info.label} — {schedule.charAt(0).toUpperCase() + schedule.slice(1)} Check-in</span>
               </h3>
 
               {!items || items.length === 0 ? (

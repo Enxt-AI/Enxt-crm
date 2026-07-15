@@ -639,15 +639,74 @@ export default function EnxtBrainApp() {
           return document;
         }
 
-        const stage = fields.stage || asText(document, "stage") || "Old Leads";
-        const potentialValueInr = salaryInputToNumber(fields.potentialValueInr || fields.contractValue);
+        const oldStage = asText(document, "stage") || "Old Leads";
+        const newStage = fields.stage || oldStage;
+
+        const oldPotentialValue = String(asText(document, "potentialValueInr") || "");
+        const newPotentialValue = fields.potentialValueInr !== undefined || fields.contractValue !== undefined
+          ? String(fields.potentialValueInr || fields.contractValue || "")
+          : oldPotentialValue;
+
+        const oldContractSigned = asText(document, "contractSignedStatus") || "Missing";
+        const newContractSigned = fields.contractSignedStatus || oldContractSigned;
+
+        const oldCompany = asText(document, "company") || "";
+        const newCompany = fields.company || oldCompany;
+
+        // Detect modifications
+        const logs: string[] = [];
+        const todayStr = new Date().toISOString().slice(0, 10);
+
+        if (fields.stage !== undefined && oldStage !== newStage) {
+          logs.push(`Lead moved to ${newStage} on ${todayStr}`);
+        }
+        
+        if ((fields.potentialValueInr !== undefined || fields.contractValue !== undefined) && oldPotentialValue !== newPotentialValue) {
+          let valNum = parseInt(newPotentialValue.replace(/,/g, ""), 10);
+          if (isNaN(valNum)) valNum = 0;
+          const formattedVal = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(valNum);
+          logs.push(`Budget updated to ${formattedVal}`);
+        }
+
+        if (fields.contractSignedStatus !== undefined && oldContractSigned !== newContractSigned) {
+          logs.push(`Contract status updated to '${newContractSigned}'`);
+        }
+
+        if (fields.company !== undefined && oldCompany !== newCompany && oldCompany) {
+          logs.push(`Company name updated to '${newCompany}'`);
+        }
+
+        // Parse existing logs
+        let activityLogs: any[] = [];
+        const rawLogs = fields.activityLogs !== undefined ? fields.activityLogs : document.fields.activityLogs;
+        if (rawLogs) {
+          if (typeof rawLogs === "string") {
+            try { activityLogs = JSON.parse(rawLogs); } catch (_) {}
+          } else if (Array.isArray(rawLogs)) {
+            activityLogs = rawLogs;
+          }
+        }
+
+        // Add new logs with timestamps
+        const timestamp = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        logs.forEach((logText) => {
+          activityLogs.unshift({
+            id: `log-${Date.now()}-${Math.random()}`,
+            timestamp,
+            text: logText
+          });
+        });
+
+        const stage = newStage;
+        const potentialValueInr = salaryInputToNumber(newPotentialValue);
         const updatedFields = {
           ...document.fields,
           ...fields,
           stage,
           potentialValueInr,
-          interest: fields.projectDetails,
-          nextAction: fields.nextSteps
+          interest: fields.projectDetails !== undefined ? fields.projectDetails : document.fields.interest,
+          nextAction: fields.nextSteps !== undefined ? fields.nextSteps : document.fields.nextAction,
+          activityLogs: JSON.stringify(activityLogs)
         };
 
         return {
@@ -848,7 +907,8 @@ export default function EnxtBrainApp() {
                         outline: 'none'
                       }}
                     >
-                      📋 Task Board
+                      <ClipboardList size={14} aria-hidden="true" />
+                      <span>Task Board</span>
                     </button>
                     <button
                       type="button"
@@ -877,7 +937,8 @@ export default function EnxtBrainApp() {
                         outline: 'none'
                       }}
                     >
-                      📊 Status Dashboard
+                      <Activity size={14} aria-hidden="true" />
+                      <span>Status Dashboard</span>
                     </button>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, BellRing, Trash2, RefreshCw, Pencil, Plus } from 'lucide-react';
+import { Bell, BellRing, Trash2, RefreshCw, Pencil, Plus, ClipboardList, Clock, AlertCircle } from 'lucide-react';
 import TaskAssignmentModal, { TaskData } from './TaskAssignmentModal';
 
 interface Task {
@@ -89,7 +89,7 @@ function Stopwatch({ startTime, deadlineTime }: { startTime: string; deadlineTim
       fontFamily: 'monospace',
       marginLeft: '6px'
     }}>
-      ⏱️ {elapsed}
+      <Clock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />{elapsed}
     </span>
   );
 }
@@ -325,7 +325,7 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
       >
         <div>
           <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            🗂️ Employee Tasks
+            <ClipboardList size={20} style={{ color: 'var(--green)', marginRight: '8px' }} />Employee Tasks
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
             {tasks.length} task{tasks.length !== 1 ? 's' : ''} total
@@ -398,7 +398,7 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
             boxShadow: 'var(--shadow)'
           }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)' }}>
-              ⏳ Pending Extension Requests
+              <Clock size={16} style={{ color: 'var(--amber)', marginRight: '6px' }} />Pending Extension Requests
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {pending.map(req => (
@@ -516,7 +516,15 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
                       padding: '4px 0',
                     }}
                   >
-                    {overdue ? '🚨 Overdue' : '⏰ Due Today'}
+                    {overdue ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                        <AlertCircle size={12} /> Overdue
+                      </span>
+                    ) : (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                        <Clock size={12} /> Due Today
+                      </span>
+                    )}
                   </div>
                 )}
 
