@@ -39,6 +39,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "reac
 import { createPortal } from "react-dom";
 import EmployeeTasksView from "./EmployeeTasksView";
 import TaskAssignmentModal from "./TaskAssignmentModal";
+import ProjectDetailsView from "./ProjectDetailsView";
 
 
 
@@ -248,6 +249,19 @@ export default function EnxtBrainApp() {
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/tasks")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAllTasks(data);
+        }
+      })
+      .catch(err => console.error("Failed to load tasks for dashboard:", err));
+  }, [taskRefreshKey, isInitializing]);
+
   const handleTaskCreated = () => {
     setTaskRefreshKey(k => k + 1);
     setShowTaskModal(false);
@@ -850,7 +864,17 @@ export default function EnxtBrainApp() {
               <EmployeesView employees={employees} projects={projects} monthlyPayroll={monthlyPayroll} onUpdateEmployee={updateEmployee} onAddEmployee={addEmployee} onViewDocument={setViewedDocument} />
             )}
 
-            {activeView === "projects" && <ProjectsView projects={projects} selectDocument={selectDocument} onUpdateProject={updateProject} onViewDocument={setViewedDocument} onAddProject={addProject} />}
+            {activeView === "projects" && (
+              <ProjectsView
+                projects={projects}
+                employees={employees}
+                allTasks={allTasks}
+                selectDocument={selectDocument}
+                onUpdateProject={updateProject}
+                onViewDocument={setViewedDocument}
+                onAddProject={addProject}
+              />
+            )}
 
             {activeView === "crm" && <CrmView leads={leads} onUpdateLead={updateLead} onAddLead={addLead} onDeleteLead={deleteLead} />}
 
@@ -2594,12 +2618,16 @@ function ProjectEditModal({
 
 function ProjectsView({
   projects,
+  employees,
+  allTasks,
   selectDocument,
   onUpdateProject,
   onViewDocument,
   onAddProject
 }: {
   projects: BrainDocument[];
+  employees: any[];
+  allTasks: any[];
   selectDocument: (document: BrainDocument) => void;
   onUpdateProject: (projectId: string, fields: Record<string, string>) => void;
   onViewDocument: (document: ViewedEmployeeDocument) => void;
@@ -2609,6 +2637,22 @@ function ProjectsView({
   const [editingProject, setEditingProject] = useState<BrainDocument | null>(null);
   const [newDocLabelProjectId, setNewDocLabelProjectId] = useState<string | null>(null);
   const [newDocLabelText, setNewDocLabelText] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  const selectedProj = projects.find(p => p.id === selectedProjectId);
+
+  if (selectedProj) {
+    return (
+      <ProjectDetailsView
+        project={selectedProj}
+        employees={employees}
+        onUpdateProject={onUpdateProject}
+        onViewDocument={onViewDocument}
+        onBack={() => setSelectedProjectId(null)}
+        allTasks={allTasks}
+      />
+    );
+  }
 
   const getCustomDocsArray = (project: BrainDocument): any[] => {
     const raw = project.fields.customDocs;
@@ -2749,31 +2793,53 @@ function ProjectsView({
               )}
             </div>
 
-            <button
-              className="text-button"
-              onClick={() => setEditingProject(project)}
-              type="button"
-              style={{
-                marginTop: "auto",
-                width: "100%",
-                textAlign: "center",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-                border: "1px solid var(--line)",
-                borderRadius: "6px",
-                padding: "8px 16px",
-                fontWeight: 600,
-                fontSize: "0.85rem",
-                color: "var(--ink)",
-                background: "white",
-                cursor: "pointer"
-              }}
-            >
-              <Pencil size={12} />
-              <span>Edit Details</span>
-            </button>
+            <div style={{ display: "flex", gap: "8px", marginTop: "auto" }}>
+              <button
+                className="primary-button"
+                onClick={() => setSelectedProjectId(project.id)}
+                type="button"
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  borderRadius: "6px",
+                  padding: "8px 12px",
+                  fontWeight: 600,
+                  fontSize: "0.82rem",
+                  minHeight: "36px"
+                }}
+              >
+                <Activity size={12} />
+                <span>View Details</span>
+              </button>
+
+              <button
+                className="text-button"
+                onClick={() => setEditingProject(project)}
+                type="button"
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  border: "1px solid var(--line)",
+                  borderRadius: "6px",
+                  padding: "8px 12px",
+                  fontWeight: 600,
+                  fontSize: "0.82rem",
+                  color: "var(--ink)",
+                  background: "white",
+                  cursor: "pointer",
+                  minHeight: "36px"
+                }}
+              >
+                <Pencil size={12} />
+                <span>Edit Details</span>
+              </button>
+            </div>
           </article>
         ))}
       </section>
