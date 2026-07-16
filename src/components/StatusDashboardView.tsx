@@ -336,11 +336,13 @@ export default function StatusDashboardView({ onViewReport, onShowToast }: Statu
                       <tbody>
                         {items.map((req) => (
                           <tr key={req.id} className={`status-row status-row-${req.status}`}>
-                            <td className="status-cell-name">
-                              <div className="status-avatar">
-                                {req.employee_name.charAt(0).toUpperCase()}
+                            <td>
+                              <div className="status-cell-name">
+                                <div className="status-avatar">
+                                  {req.employee_name.charAt(0).toUpperCase()}
+                                </div>
+                                <span>{req.employee_name}</span>
                               </div>
-                              <span>{req.employee_name}</span>
                             </td>
                             <td>{req.department || "--"}</td>
                             <td>{req.project || "--"}</td>

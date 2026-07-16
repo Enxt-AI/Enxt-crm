@@ -3763,13 +3763,38 @@ main {
   border-collapse: collapse;
   text-align: left;
   font-size: 0.85rem;
+  table-layout: fixed;
+  min-width: 900px;
 }
 
 .status-table th,
 .status-table td {
   padding: 14px 20px;
   border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+/* Column widths for consistent alignment */
+.status-table th:nth-child(1),
+.status-table td:nth-child(1) { width: 14%; }       /* Employee */
+.status-table th:nth-child(2),
+.status-table td:nth-child(2) { width: 10%; }       /* Department */
+.status-table th:nth-child(3),
+.status-table td:nth-child(3) { width: 14%; }       /* Project */
+.status-table th:nth-child(4),
+.status-table td:nth-child(4) { width: 8%; }        /* Sent At */
+.status-table th:nth-child(5),
+.status-table td:nth-child(5) { width: 8%; }        /* Reply Time */
+.status-table th:nth-child(6),
+.status-table td:nth-child(6) { width: 8%; }        /* Response */
+.status-table th:nth-child(7),
+.status-table td:nth-child(7) { width: 10%; }       /* Status */
+.status-table th:nth-child(8),
+.status-table td:nth-child(8) { width: 22%; }       /* Latest Project Update */
+.status-table th:nth-child(9),
+.status-table td:nth-child(9) { width: 6%; }        /* Actions */
 
 .status-table th {
   background: rgba(0,0,0,0.02);
