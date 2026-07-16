@@ -745,7 +745,7 @@ export default function ProjectDetailsView({
                       { icon: Calendar, user: "Alok", action: "scheduled Technical Alignment meeting", time: "Yesterday" },
                       { icon: CheckSquare, user: "Yug Jain", action: "completed API interface setup task", time: "3 days ago" },
                       { icon: AlertCircle, user: "System", action: "flagged Staging Pipeline Latency risk", time: "5 days ago" }
-                    ].map((item, idx) => {
+                    ].map((item: any, idx: number) => {
                       const TimelineIcon = item.icon;
                       return (
                         <div key={idx} style={{ display: "flex", gap: "12px", alignItems: "flex-start", position: "relative" }}>
@@ -793,7 +793,7 @@ export default function ProjectDetailsView({
                         No upcoming tasks.
                       </p>
                     ) : (
-                      projectTasks.slice(0, 4).map((task) => {
+                      projectTasks.slice(0, 4).map((task: any) => {
                         const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Completed";
                         return (
                           <div key={task.id} style={{
@@ -982,7 +982,7 @@ export default function ProjectDetailsView({
 
               {/* Timeline of Meetings */}
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {meetings.map((meeting) => (
+                {meetings.map((meeting: any) => (
                   <div
                     key={meeting.id}
                     style={{
@@ -1030,7 +1030,7 @@ export default function ProjectDetailsView({
                           Action Items:
                         </span>
                         <ul style={{ margin: "4px 0 0", paddingLeft: "16px", fontSize: "0.8" + "rem", color: "var(--ink)" }}>
-                          {meeting.actionItems.map((item, idx) => <li key={idx}>{item}</li>)}
+                          {meeting.actionItems.map((item: any, idx: number) => <li key={idx}>{item}</li>)}
                         </ul>
                       </div>
                     )}
@@ -1045,7 +1045,7 @@ export default function ProjectDetailsView({
             <div className="panel" style={{ padding: "20px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
                 
-                {projectTeam.map((member) => {
+                {projectTeam.map((member: any) => {
                     const name = member.fields?.name || member.title || "Team Member";
                     const isYug = name.toLowerCase().includes("yug");
                     const currentTask = isYug ? "Embeddings indexing & scaling" : "Staging layout & UI updates";
@@ -1167,7 +1167,7 @@ export default function ProjectDetailsView({
                       { week: "Wk 25", count: 4, height: 70 },
                       { week: "Wk 26", count: 3, height: 50 },
                       { week: "Wk 27", count: 6, height: 95 }
-                    ].map((wk, i) => (
+                    ].map((wk: any, i: number) => (
                       <g key={i} transform={`translate(${i * 70 + 35}, 0)`}>
                         <rect
                           x="0"
@@ -1226,7 +1226,7 @@ export default function ProjectDetailsView({
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {risks.map((risk) => {
+                {risks.map((risk: any) => {
                   const pColor =
                     risk.priority === "Critical" ? "var(--red)" :
                     risk.priority === "High" ? "var(--amber)" :
