@@ -228,7 +228,7 @@ export default function ProjectDetailsView({
   // Load project tasks
   const projectTasks = useMemo(() => {
     const projectTitle = String(project.title ?? "").toLowerCase();
-    return allTasks.filter((t) => {
+    return allTasks.filter((t: any) => {
       const taskTitle = String(t.title ?? "").toLowerCase();
       const taskDesc = String(t.description ?? "").toLowerCase();
       return (
@@ -241,11 +241,11 @@ export default function ProjectDetailsView({
 
   // Load actual assigned team members for this project's tasks
   const projectTeam = useMemo(() => {
-    const assignedIds = new Set(projectTasks.flatMap(t => t.assignedEmployeeIds || []));
-    const assignedMembers = employees.filter(emp => assignedIds.has(emp.id));
+    const assignedIds = new Set(projectTasks.flatMap((t: any) => t.assignedEmployeeIds || []));
+    const assignedMembers = employees.filter((emp: any) => assignedIds.has(emp.id));
     if (assignedMembers.length === 0) {
       return employees
-        .filter((emp) => {
+        .filter((emp: any) => {
           const status = emp.fields?.status || emp.status;
           return String(status).toLowerCase() === "active";
         })
@@ -281,10 +281,10 @@ export default function ProjectDetailsView({
   // -------------------------------------------------------------
   const taskStats = useMemo(() => {
     const total = projectTasks.length;
-    const completed = projectTasks.filter(t => t.status === "Completed").length;
-    const pending = projectTasks.filter(t => t.status === "Pending").length;
-    const blocked = projectTasks.filter(t => t.status === "Blocked").length;
-    const inProgress = projectTasks.filter(t => t.status === "In Progress").length;
+    const completed = projectTasks.filter((t: any) => t.status === "Completed").length;
+    const pending = projectTasks.filter((t: any) => t.status === "Pending").length;
+    const blocked = projectTasks.filter((t: any) => t.status === "Blocked").length;
+    const inProgress = projectTasks.filter((t: any) => t.status === "In Progress").length;
 
     // Days remaining logic
     const due = new Date(String(project.fields.dueDate || new Date().toISOString()));
@@ -297,7 +297,7 @@ export default function ProjectDetailsView({
 
     // Calculate dynamic health
     let calculatedHealth = "Green";
-    const overdueTasks = projectTasks.filter(t => t.status !== "Completed" && t.dueDate && new Date(t.dueDate) < today).length;
+    const overdueTasks = projectTasks.filter((t: any) => t.status !== "Completed" && t.dueDate && new Date(t.dueDate) < today).length;
 
     if (overdueTasks > 0 || blocked > 1 || (daysRemaining < 7 && calculatedProgress < 50)) {
       calculatedHealth = "Red";
