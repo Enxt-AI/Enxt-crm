@@ -242,14 +242,13 @@ export default function TaskAssignmentModal({
               {!isEditMode && (
                 <div className="field-control" style={{ gridColumn: '1 / -1' }}>
                   <span style={{
-                    display: 'block',
+                    display: 'flex',
                     marginBottom: '10px',
                     fontWeight: 600,
                     fontSize: '0.82rem',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     color: 'var(--muted)',
-                    display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
                   }}>
