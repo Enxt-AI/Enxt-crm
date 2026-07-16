@@ -343,7 +343,7 @@ export default function ProjectDetailsView({
   const filteredDocs = useMemo(() => {
     const list = [...customDocs];
     return list
-      .filter(d => {
+      .filter((d: any) => {
         const labelText = String(d.label || "").toLowerCase();
         const fileText = String(d.fileName || "").toLowerCase();
         const matchesQuery = labelText.includes(docSearch.toLowerCase()) || fileText.includes(docSearch.toLowerCase());
@@ -359,7 +359,7 @@ export default function ProjectDetailsView({
 
   // Document types present
   const docTypes = useMemo(() => {
-    const types = customDocs.map(d => d.fileName ? d.fileName.split(".").pop()?.toUpperCase() : "").filter(Boolean);
+    const types = customDocs.map((d: any) => d.fileName ? d.fileName.split(".").pop()?.toUpperCase() : "").filter(Boolean);
     return Array.from(new Set(types));
   }, [customDocs]);
 
