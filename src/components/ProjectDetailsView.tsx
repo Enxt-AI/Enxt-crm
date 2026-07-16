@@ -397,7 +397,7 @@ export default function ProjectDetailsView({
 
   const handleDeleteDocument = (docId: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return;
-    const updated = customDocs.filter(d => d.id !== docId);
+    const updated = customDocs.filter((d: any) => d.id !== docId);
     onUpdateProject(project.id, {
       customDocs: JSON.stringify(updated)
     });
