@@ -168,9 +168,9 @@ export async function POST(request: NextRequest) {
             const taskTitle = t.title.toLowerCase();
             return taskTitle.includes(projectTitle) || projectTitle.includes(taskTitle);
           });
-          const assignedNames = [
-            ...new Set(relatedTasks.flatMap((t) => t.assignedEmployeeNames))
-          ];
+          const assignedNames = Array.from(
+            new Set(relatedTasks.flatMap((t) => t.assignedEmployeeNames))
+          );
           if (assignedNames.length > 0) {
             memItem.assignedEmployees = assignedNames;
           }
