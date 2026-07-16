@@ -20,6 +20,7 @@ interface Employee {
 
 interface Props {
   employees: Employee[];
+  projects?: import('./TaskAssignmentModal').ProjectItem[];
   onAssignClick?: () => void;
   onShowToast?: (message: string, type: 'success' | 'error') => void;
 }
@@ -94,7 +95,7 @@ function Stopwatch({ startTime, deadlineTime }: { startTime: string; deadlineTim
   );
 }
 
-export default function EmployeeTasksView({ employees, onAssignClick, onShowToast }: Props) {
+export default function EmployeeTasksView({ employees, projects = [], onAssignClick, onShowToast }: Props) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [changeRequests, setChangeRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -713,6 +714,7 @@ export default function EmployeeTasksView({ employees, onAssignClick, onShowToas
       {/* Edit Task Modal */}
       <TaskAssignmentModal
         employees={employees}
+        projects={projects}
         open={editModalOpen}
         setOpen={(v) => {
           setEditModalOpen(v);

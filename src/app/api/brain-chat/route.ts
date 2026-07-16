@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import type { BrainDocument, ChatMessage } from "../../../lib/types";
+import { supabase } from "../../../lib/supabase";
 
 type BrainChatRequest = {
   prompt?: string;
@@ -116,12 +117,70 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
   }
 
-  const companyMemory = documents.map(compactDocument);
+  const companyMemory = documents.map(compactDocument) as Record<string, unknown>[];
   const recentMessages = (body.messages ?? []).slice(-8).map((message) => ({
     role: message.role,
     content: message.content
   }));
   const isLongListRequest = /\b(all|list|show|export|contacts?|everyone|complete)\b/i.test(prompt);
+
+  // --- Fetch tasks from Supabase to include assignment data ---
+  let taskAssignments: Array<{
+    id: string;
+    title: string;
+    status: string;
+    dueDate: string;
+    assignedEmployeeIds: string[];
+    assignedEmployeeNames: string[];
+  }> = [];
+
+  try {
+    const { data: taskRows } = await supabase.from("tasks").select("*");
+    if (taskRows && taskRows.length > 0) {
+      // Build employee ID → name map from the documents
+      const employeeNameMap: Record<string, string> = {};
+      for (const doc of documents) {
+        if (doc.type === "employee") {
+          const name = String(doc.fields?.name ?? doc.title ?? "").replace(/ - .+$/, "").trim();
+          if (name) employeeNameMap[doc.id] = name;
+        }
+      }
+
+      taskAssignments = taskRows.map((row: Record<string, unknown>) => {
+        const empIds: string[] = (row.assigned_employee_ids as string[]) || [];
+        return {
+          id: row.id as string,
+          title: row.title as string,
+          status: row.status as string,
+          dueDate: row.due_date as string,
+          assignedEmployeeIds: empIds,
+          assignedEmployeeNames: empIds.map((eid) => employeeNameMap[eid] || eid)
+        };
+      });
+
+      // Enrich project entries in companyMemory with assigned employee names
+      for (const memItem of companyMemory) {
+        if (memItem.type === "project") {
+          const projectTitle = String(memItem.title ?? "").toLowerCase();
+          const projectId = String(memItem.id ?? "");
+          // Find tasks whose title matches the project (loose match) or explicit link
+          const relatedTasks = taskAssignments.filter((t) => {
+            const taskTitle = t.title.toLowerCase();
+            return taskTitle.includes(projectTitle) || projectTitle.includes(taskTitle);
+          });
+          const assignedNames = [
+            ...new Set(relatedTasks.flatMap((t) => t.assignedEmployeeNames))
+          ];
+          if (assignedNames.length > 0) {
+            memItem.assignedEmployees = assignedNames;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[brain-chat] Failed to fetch tasks for context:", err);
+    // Non-fatal: proceed without task data
+  }
 
   const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
   let apiResponse: Response;
@@ -140,7 +199,7 @@ export async function POST(request: NextRequest) {
             parts: [
               {
                 text:
-                  "You are Enxt Brain, the private AI company brain for Enxt AI's founder. Answer only from the provided company memory. Be direct, operational, and specific. When asked for lists, compute from the JSON fields and return the complete list. For CRM contact lists, format each item as `Name - Company - Stage`, one item per line, with no extra commentary after the list. For employee salary questions, use monthlySalaryInr and format each result as `Name - salary INR - status`, one employee per line. Do not use tables. Do not add unfinished parentheses. If there are no matches, say so clearly. If the founder asks to edit, move, add, or update records, explain the intended change clearly and ask for approval unless the portal has already provided an explicit update action. Never invent employees, salaries, leads, clients, or project facts that are not in memory."
+                  "You are Enxt Brain, the private AI company brain for Enxt AI's founder. Answer only from the provided company memory. Be direct, operational, and specific. When asked for lists, compute from the JSON fields and return the complete list. For CRM contact lists, format each item as `Name - Company - Stage`, one item per line, with no extra commentary after the list. For employee salary questions, use monthlySalaryInr and format each result as `Name - salary INR - status`, one employee per line. Do not use tables. Do not add unfinished parentheses. If there are no matches, say so clearly. If the founder asks to edit, move, add, or update records, explain the intended change clearly and ask for approval unless the portal has already provided an explicit update action. Never invent employees, salaries, leads, clients, or project facts that are not in memory. IMPORTANT: Each project has an 'owner' field (the project owner/manager) AND may have an 'assignedEmployees' field (the employees actively working on the project). The 'taskAssignments' section in memory contains tasks with the employees assigned to work on them. When asked who is assigned to or working on a project, check BOTH the project's assignedEmployees field AND the taskAssignments data. The owner is not necessarily the person doing the work — distinguish between 'owner' and 'assigned employees'."
               }
             ]
           },
@@ -153,7 +212,8 @@ export async function POST(request: NextRequest) {
                     founderQuestion: prompt,
                     writeMode: Boolean(body.writeMode),
                     recentMessages,
-                    companyMemory
+                    companyMemory,
+                    taskAssignments: taskAssignments.length > 0 ? taskAssignments : undefined
                   })
                 }
               ]

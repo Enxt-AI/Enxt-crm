@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { EditableField } from './enxt-brain-app';
-import { X, Check } from 'lucide-react';
+import { X, Check, SquareKanban } from 'lucide-react';
 
 export interface TaskData {
   id?: string; // present when editing an existing task
@@ -12,8 +11,16 @@ export interface TaskData {
   assignedEmployeeIds: string[];
 }
 
+export interface ProjectItem {
+  id: string;
+  title: string;
+  body?: string;
+  fields?: Record<string, any>;
+}
+
 interface TaskFormProps {
   employees: any[];
+  projects?: ProjectItem[];
   onTaskCreated?: () => void;
   open: boolean;
   setOpen: (open: boolean) => void;
@@ -24,6 +31,7 @@ interface TaskFormProps {
 
 export default function TaskAssignmentModal({
   employees,
+  projects = [],
   onTaskCreated,
   open,
   setOpen,
@@ -38,6 +46,7 @@ export default function TaskAssignmentModal({
   });
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -50,6 +59,7 @@ export default function TaskAssignmentModal({
     if (editTask) {
       setTitle(editTask.title || '');
       setDescription(editTask.description || '');
+      setSelectedProjectId(''); // no project picker in edit mode
       // If the dueDate contains a time component (T), split it
       if (editTask.dueDate && editTask.dueDate.includes('T')) {
         const [datePart, timePart] = editTask.dueDate.split('T');
@@ -68,11 +78,26 @@ export default function TaskAssignmentModal({
 
   const reset = () => {
     setSelectedEmployeeIds([]);
+    setSelectedProjectId('');
     setTitle('');
     setDescription('');
     setDueDate('');
     setDueTime('');
     setStatus('Pending');
+  };
+
+  // When a project is selected, auto-populate title & description
+  const handleProjectSelect = (proj: ProjectItem) => {
+    if (selectedProjectId === proj.id) {
+      // Deselect
+      setSelectedProjectId('');
+      setTitle('');
+      setDescription('');
+    } else {
+      setSelectedProjectId(proj.id);
+      setTitle(proj.title);
+      setDescription(proj.body || proj.fields?.description || '');
+    }
   };
 
   const toggleEmployee = (id: string) => {
@@ -94,14 +119,17 @@ export default function TaskAssignmentModal({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) { onShowToast?.('Please enter a task title.', 'error'); return; }
+    if (!isEditMode && !selectedProjectId) {
+      onShowToast?.('Please select a project for this task.', 'error');
+      return;
+    }
+    if (!title.trim()) { onShowToast?.('Please select a project first.', 'error'); return; }
     if (selectedEmployeeIds.length === 0) { onShowToast?.('Please select at least one employee.', 'error'); return; }
 
     setSubmitting(true);
     try {
       if (isEditMode && editTask?.id) {
         // ── EDIT MODE: PATCH existing task ──────────────────────────
-        // Combine date + time into a single ISO-ish string
         const combinedDueDate = dueTime ? `${dueDate}T${dueTime}` : dueDate;
         const res = await fetch('/api/tasks', {
           method: 'PATCH',
@@ -118,7 +146,6 @@ export default function TaskAssignmentModal({
         onShowToast?.('✅ Task updated successfully!', 'success');
       } else {
         // ── CREATE MODE: POST new task ──────────────────────────────
-        // Combine date + time into a single ISO-ish string
         const combinedDueDate = dueTime ? `${dueDate}T${dueTime}` : dueDate;
         const res = await fetch('/api/tasks', {
           method: 'POST',
@@ -147,7 +174,7 @@ export default function TaskAssignmentModal({
           const message =
             `📋 *New Task Assigned*\n\n` +
             `Hi ${employee.fields?.name || employee.title || 'there'}!\n\n` +
-            `*Title:* ${title}\n` +
+            `*Project:* ${title}\n` +
             `*Description:* ${description || 'No description provided.'}\n` +
             `*Due Date:* ${formattedDate}${timeStr}\n` +
             `*Status:* ${status}`;
@@ -210,8 +237,207 @@ export default function TaskAssignmentModal({
             </div>
 
             <div className="employee-edit-grid">
-              <EditableField label="Title" value={title} onChange={setTitle} />
-              <EditableField label="Description" value={description} onChange={setDescription} />
+
+              {/* ── PROJECT PICKER (create mode only) ── */}
+              {!isEditMode && (
+                <div className="field-control" style={{ gridColumn: '1 / -1' }}>
+                  <span style={{
+                    display: 'block',
+                    marginBottom: '10px',
+                    fontWeight: 600,
+                    fontSize: '0.82rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}>
+                    <SquareKanban size={13} />
+                    Select Project
+                    {selectedProjectId && (
+                      <span style={{
+                        background: 'var(--accent)',
+                        color: '#fff',
+                        borderRadius: '999px',
+                        padding: '1px 8px',
+                        marginLeft: '4px',
+                        fontSize: '0.75rem',
+                      }}>
+                        1 selected
+                      </span>
+                    )}
+                  </span>
+
+                  {projects.length === 0 ? (
+                    <div style={{
+                      padding: '20px',
+                      textAlign: 'center',
+                      color: 'var(--muted)',
+                      fontSize: '0.85rem',
+                      border: '1px dashed var(--line)',
+                      borderRadius: '10px',
+                    }}>
+                      No projects found. Add projects in the Projects view first.
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      maxHeight: '220px',
+                      overflowY: 'auto',
+                      paddingRight: '2px',
+                    }}>
+                      {projects.map((proj) => {
+                        const isSelected = selectedProjectId === proj.id;
+                        const phase = proj.fields?.phase || '';
+                        const client = proj.fields?.client || '';
+                        const health = proj.fields?.health || '';
+                        const healthColor =
+                          health === 'Green' ? '#10b981' :
+                          health === 'Amber' ? '#f59e0b' :
+                          health === 'Red'   ? '#ef4444' : 'var(--muted)';
+
+                        return (
+                          <button
+                            key={proj.id}
+                            type="button"
+                            onClick={() => handleProjectSelect(proj)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              padding: '10px 14px',
+                              borderRadius: '10px',
+                              border: isSelected
+                                ? '2px solid var(--accent)'
+                                : '1px solid var(--line)',
+                              background: isSelected
+                                ? 'rgba(var(--accent-rgb, 79,70,229), 0.06)'
+                                : 'var(--panel)',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              transition: 'all 0.15s ease',
+                              boxShadow: isSelected ? '0 0 0 3px rgba(79,70,229,0.12)' : 'none',
+                            }}
+                            aria-pressed={isSelected}
+                          >
+                            {/* Color dot */}
+                            <span style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: healthColor,
+                              flexShrink: 0,
+                            }} />
+
+                            <span style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{
+                                display: 'block',
+                                fontWeight: 700,
+                                fontSize: '0.88rem',
+                                color: 'var(--ink)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}>
+                                {proj.title}
+                              </span>
+                              {(client || phase) && (
+                                <span style={{
+                                  display: 'block',
+                                  fontSize: '0.76rem',
+                                  color: 'var(--muted)',
+                                  marginTop: '2px',
+                                }}>
+                                  {[client, phase].filter(Boolean).join(' · ')}
+                                </span>
+                              )}
+                            </span>
+
+                            {isSelected && (
+                              <span style={{
+                                background: 'var(--accent)',
+                                color: '#fff',
+                                borderRadius: '50%',
+                                width: '20px',
+                                height: '20px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                              }}>
+                                <Check size={12} />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Show selected project summary */}
+                  {selectedProjectId && (() => {
+                    const proj = projects.find(p => p.id === selectedProjectId);
+                    if (!proj) return null;
+                    return (
+                      <div style={{
+                        marginTop: '10px',
+                        padding: '10px 14px',
+                        background: 'rgba(79,70,229,0.05)',
+                        border: '1px solid rgba(79,70,229,0.15)',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        color: 'var(--muted)',
+                        lineHeight: '1.5',
+                      }}>
+                        <strong style={{ color: 'var(--ink)', display: 'block', marginBottom: '4px' }}>
+                          📋 Task: {proj.title}
+                        </strong>
+                        {(proj.body || proj.fields?.description) && (
+                          <span style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}>
+                            {proj.body || proj.fields?.description}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ── EDIT MODE: show task title as read-only label ── */}
+              {isEditMode && (
+                <div className="field-control" style={{ gridColumn: '1 / -1' }}>
+                  <span style={{
+                    display: 'block',
+                    marginBottom: '6px',
+                    fontWeight: 600,
+                    fontSize: '0.82rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--muted)',
+                  }}>
+                    Task / Project
+                  </span>
+                  <div style={{
+                    padding: '10px 14px',
+                    background: 'var(--panel)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: 'var(--ink)',
+                  }}>
+                    {title}
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', gridColumn: '1 / -1' }}>
                 <label className="field-control" style={{ minWidth: 0 }}>
@@ -320,7 +546,7 @@ export default function TaskAssignmentModal({
                   ? (isEditMode ? 'Saving…' : 'Creating…')
                   : isEditMode
                     ? 'Save Changes'
-                    : `Create Task${selectedEmployeeIds.length > 1 ? ` & Notify ${selectedEmployeeIds.length}` : ''}`
+                    : `Assign Task${selectedEmployeeIds.length > 1 ? ` & Notify ${selectedEmployeeIds.length}` : ''}`
                 }
               </button>
             </div>

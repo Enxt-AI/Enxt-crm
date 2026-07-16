@@ -948,7 +948,8 @@ export default function EnxtBrainApp() {
                     <>
                       <EmployeeTasksView 
                         key={taskRefreshKey} 
-                        employees={employees} 
+                        employees={employees}
+                        projects={projects}
                         onAssignClick={() => setShowTaskModal(true)}
                         onShowToast={(message: string, type: "success" | "error") => {
                           setGlobalToast({ message, type });
@@ -957,7 +958,8 @@ export default function EnxtBrainApp() {
                       />
 
                       <TaskAssignmentModal 
-                        employees={employees} 
+                        employees={employees}
+                        projects={projects}
                         onTaskCreated={handleTaskCreated} 
                         open={showTaskModal}
                         setOpen={setShowTaskModal}
