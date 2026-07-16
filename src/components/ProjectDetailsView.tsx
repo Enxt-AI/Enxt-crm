@@ -358,9 +358,9 @@ export default function ProjectDetailsView({
   }, [customDocs, docSearch, docTypeFilter, docSort]);
 
   // Document types present
-  const docTypes = useMemo(() => {
+  const docTypes = useMemo<string[]>(() => {
     const types = customDocs.map((d: any) => d.fileName ? d.fileName.split(".").pop()?.toUpperCase() : "").filter(Boolean);
-    return Array.from(new Set(types));
+    return Array.from(new Set(types)) as string[];
   }, [customDocs]);
 
   // -------------------------------------------------------------
