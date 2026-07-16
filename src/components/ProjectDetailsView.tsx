@@ -456,19 +456,19 @@ export default function ProjectDetailsView({
       [],
       ["Tasks Details"],
       ["Task Title", "Status", "Due Date"],
-      ...projectTasks.map(t => [t.title, t.status, t.dueDate || "N/A"]),
+      ...projectTasks.map((t: any) => [t.title, t.status, t.dueDate || "N/A"]),
       [],
       ["Risks Log"],
       ["Risk Title", "Description", "Priority", "Owner"],
-      ...risks.map(r => [r.title, r.description, r.priority, r.owner]),
+      ...risks.map((r: any) => [r.title, r.description, r.priority, r.owner]),
       [],
       ["Meetings List"],
       ["Meeting Title", "Date", "Summary"],
-      ...meetings.map(m => [m.title, m.date, m.summary])
+      ...meetings.map((m: any) => [m.title, m.date, m.summary])
     ];
 
     const csvContent = "data:text/csv;charset=utf-8," 
-      + rows.map(e => e.map(val => `"${val}"`).join(",")).join("\n");
+      + rows.map((e: any) => e.map((val: any) => `"${val}"`).join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -490,7 +490,7 @@ export default function ProjectDetailsView({
       <tr><th colspan="3" style="background:#f4f7f0;">Team Tasks</th></tr>
       <tr><th>Task</th><th>Status</th><th>Due</th></tr>`;
 
-    projectTasks.forEach(t => {
+    projectTasks.forEach((t: any) => {
       tableHtml += `<tr><td>${t.title}</td><td>${t.status}</td><td>${t.dueDate || "N/A"}</td></tr>`;
     });
 
@@ -498,7 +498,7 @@ export default function ProjectDetailsView({
       <tr><th colspan="3" style="background:#f4f7f0;">Risks Log</th></tr>
       <tr><th>Risk Title</th><th>Priority</th><th>Owner</th></tr>`;
 
-    risks.forEach(r => {
+    risks.forEach((r: any) => {
       tableHtml += `<tr><td>${r.title}</td><td>${r.priority}</td><td>${r.owner}</td></tr>`;
     });
 
