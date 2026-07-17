@@ -907,8 +907,6 @@ export default function ProjectDetailsView({
                   <thead>
                     <tr>
                       <th>Document Name</th>
-                      <th>Version</th>
-                      <th>Uploaded By</th>
                       <th>Date</th>
                       <th>Size</th>
                       <th style={{ textAlign: "right" }}>Actions</th>
@@ -917,7 +915,7 @@ export default function ProjectDetailsView({
                   <tbody>
                     {filteredDocs.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: "center", color: "var(--muted)", padding: "30px" }}>
+                        <td colSpan={4} style={{ textAlign: "center", color: "var(--muted)", padding: "30px" }}>
                           No documents match filters. Click upload to add.
                         </td>
                       </tr>
@@ -935,8 +933,6 @@ export default function ProjectDetailsView({
                                 </div>
                               </div>
                             </td>
-                            <td><span style={{ fontSize: "0.82rem", color: "var(--ink)" }}>{doc.version || "v1.0"}</span></td>
-                            <td><span style={{ fontSize: "0.82rem", color: "var(--ink)" }}>{doc.author || "Founder Office"}</span></td>
                             <td><span style={{ fontSize: "0.82rem", color: "var(--ink)" }}>{doc.date || "N/A"}</span></td>
                             <td><span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>{doc.size || "120 KB"}</span></td>
                             <td style={{ textAlign: "right" }}>

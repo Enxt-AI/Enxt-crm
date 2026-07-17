@@ -5,8 +5,7 @@ import "./globals.css";
 
 export const viewport: Viewport = {
   width: "device-width",
-  initialScale: 1,
-  maximumScale: 1
+  initialScale: 1
 };
 
 export const metadata: Metadata = {
