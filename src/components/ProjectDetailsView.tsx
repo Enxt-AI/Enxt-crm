@@ -159,29 +159,7 @@ export default function ProjectDetailsView({
     if (raw && typeof raw === "string") {
       try { return JSON.parse(raw); } catch (_) {}
     }
-    // Mock default meetings if none exist
-    return [
-      {
-        id: `meet-1`,
-        title: "Kickoff & Requirement Alignment",
-        date: "2026-06-15",
-        time: "11:00 AM",
-        participants: [project.fields.owner || "Rohan Iyer", "YUG", "Alok"],
-        summary: "Aligned project goals, milestones, and deliverable schedules. Defined integration parameters.",
-        actionItems: ["Finalize architecture roadmap (Yug)", "Set up GitHub repo (Alok)"],
-        nextMeetingDate: "2026-06-22"
-      },
-      {
-        id: `meet-2`,
-        title: "Sprint 1 Technical Review",
-        date: "2026-07-10",
-        time: "02:30 PM",
-        participants: [project.fields.owner || "Rohan Iyer", "YUG"],
-        summary: "Reviewed initial retrieval schema and staging pipelines. Identified latency bottlenecks in API loops.",
-        actionItems: ["Optimize vector store indexing (Yug)"],
-        nextMeetingDate: "2026-07-24"
-      }
-    ];
+    return [];
   }, [project.fields.meetings]);
 
   // Parse risks
@@ -190,26 +168,7 @@ export default function ProjectDetailsView({
     if (raw && typeof raw === "string") {
       try { return JSON.parse(raw); } catch (_) {}
     }
-    return [
-      {
-        id: "risk-1",
-        title: "Staging Pipeline Latency",
-        description: "Large embeddings matching queries currently take >800ms. Optimization required.",
-        priority: "High",
-        owner: "Yug Jain",
-        resolution: "Introduce server-side cache and index optimization.",
-        status: "Active"
-      },
-      {
-        id: "risk-2",
-        title: "Client Approvals Backlog",
-        description: "Approval for external ingestion policies has been delayed, blocking final production setup.",
-        priority: "Critical",
-        owner: project.fields.owner || "Rohan Iyer",
-        resolution: "Follow up directly on weekly leadership call.",
-        status: "Active"
-      }
-    ];
+    return [];
   }, [project.fields.risks]);
 
   // Parse custom documents
@@ -242,16 +201,7 @@ export default function ProjectDetailsView({
   // Load actual assigned team members for this project's tasks
   const projectTeam = useMemo(() => {
     const assignedIds = new Set(projectTasks.flatMap((t: any) => t.assignedEmployeeIds || []));
-    const assignedMembers = employees.filter((emp: any) => assignedIds.has(emp.id));
-    if (assignedMembers.length === 0) {
-      return employees
-        .filter((emp: any) => {
-          const status = emp.fields?.status || emp.status;
-          return String(status).toLowerCase() === "active";
-        })
-        .slice(0, 3);
-    }
-    return assignedMembers;
+    return employees.filter((emp: any) => assignedIds.has(emp.id));
   }, [projectTasks, employees]);
 
   // Load notes
@@ -293,7 +243,10 @@ export default function ProjectDetailsView({
     const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
     // Calculate Completion
-    const calculatedProgress = total > 0 ? Math.round((completed / total) * 100) : Number(project.fields.progress || 0);
+    const manualProgress = Number(project.fields.progress || 0);
+    const calculatedProgress = (manualProgress > 0 || total === 0)
+      ? manualProgress
+      : Math.round((completed / total) * 100);
 
     // Calculate dynamic health
     let calculatedHealth = "Green";
@@ -317,6 +270,66 @@ export default function ProjectDetailsView({
       overdue: overdueTasks
     };
   }, [projectTasks, project.fields.progress, project.fields.dueDate]);
+
+  // Dynamic Timeline Activities
+  const timelineEvents = useMemo(() => {
+    const events: any[] = [];
+
+    events.push({
+      icon: CheckSquare,
+      user: project.fields.owner || "Owner",
+      action: `initialized project: "${project.title}"`,
+      time: project.updatedAt || "N/A",
+      timestamp: new Date(project.updatedAt || Date.now()).getTime()
+    });
+
+    customDocs.forEach((doc: any) => {
+      events.push({
+        icon: FileText,
+        user: doc.author || project.fields.owner || "Owner",
+        action: `uploaded document slot: "${doc.label}" (${doc.fileName})`,
+        time: doc.date || "N/A",
+        timestamp: new Date(doc.date || Date.now()).getTime()
+      });
+    });
+
+    meetings.forEach((meet: any) => {
+      events.push({
+        icon: Calendar,
+        user: project.fields.owner || "Owner",
+        action: `scheduled meeting: "${meet.title}"`,
+        time: meet.date || "N/A",
+        timestamp: new Date(meet.date || Date.now()).getTime()
+      });
+    });
+
+    risks.forEach((risk: any) => {
+      events.push({
+        icon: AlertCircle,
+        user: risk.owner || "System",
+        action: `flagged risk: "${risk.title}" (${risk.priority} Priority)`,
+        time: "Active Log",
+        timestamp: Date.now() - 10000
+      });
+    });
+
+    return events.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+  }, [project, customDocs, meetings, risks]);
+
+  // Weekly task progression data
+  const weeklyTaskCounts = useMemo(() => {
+    const completedTasks = projectTasks.filter((t: any) => t.status === "Completed");
+    const counts: Record<string, number> = {};
+    completedTasks.forEach((t: any) => {
+      const label = t.dueDate ? t.dueDate.slice(5) : "No Date";
+      counts[label] = (counts[label] || 0) + 1;
+    });
+    return Object.entries(counts).map(([week, count]) => ({
+      week,
+      count,
+      height: Math.min(90, count * 20 + 20)
+    })).slice(-4);
+  }, [projectTasks]);
 
   // -------------------------------------------------------------
   // AI Summary Generator
@@ -400,6 +413,22 @@ export default function ProjectDetailsView({
     const updated = customDocs.filter((d: any) => d.id !== docId);
     onUpdateProject(project.id, {
       customDocs: JSON.stringify(updated)
+    });
+  };
+
+  const handleDeleteMeeting = (meetId: string) => {
+    if (!confirm("Are you sure you want to delete this meeting?")) return;
+    const updated = meetings.filter((m: any) => m.id !== meetId);
+    onUpdateProject(project.id, {
+      meetings: JSON.stringify(updated)
+    });
+  };
+
+  const handleDeleteRisk = (riskId: string) => {
+    if (!confirm("Are you sure you want to delete this risk log?")) return;
+    const updated = risks.filter((r: any) => r.id !== riskId);
+    onUpdateProject(project.id, {
+      risks: JSON.stringify(updated)
     });
   };
 
@@ -740,12 +769,7 @@ export default function ProjectDetailsView({
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px", position: "relative", paddingLeft: "16px" }}>
                     <div style={{ position: "absolute", left: "6px", top: "4px", bottom: "4px", width: "2px", background: "var(--line)" }} />
                     
-                    {[
-                      { icon: FileText, user: "Rohan Iyer", action: "uploaded leave policy template", time: "2 hours ago" },
-                      { icon: Calendar, user: "Alok", action: "scheduled Technical Alignment meeting", time: "Yesterday" },
-                      { icon: CheckSquare, user: "Yug Jain", action: "completed API interface setup task", time: "3 days ago" },
-                      { icon: AlertCircle, user: "System", action: "flagged Staging Pipeline Latency risk", time: "5 days ago" }
-                    ].map((item: any, idx: number) => {
+                    {timelineEvents.map((item: any, idx: number) => {
                       const TimelineIcon = item.icon;
                       return (
                         <div key={idx} style={{ display: "flex", gap: "12px", alignItems: "flex-start", position: "relative" }}>
@@ -974,9 +998,18 @@ export default function ProjectDetailsView({
                 <button
                   className="primary-button"
                   onClick={() => setShowScheduleMeetingModal(true)}
-                  style={{ minHeight: "36px", padding: "0 14px", borderRadius: "8px", fontSize: "0.85rem" }}
+                  style={{
+                    minHeight: "36px",
+                    padding: "0 14px",
+                    borderRadius: "8px",
+                    fontSize: "0.85rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
                 >
-                  ➕ Schedule Meeting
+                  <Plus size={14} style={{ color: "#fff" }} />
+                  <span>Schedule Meeting</span>
                 </button>
               </div>
 
@@ -1004,16 +1037,26 @@ export default function ProjectDetailsView({
                           {meeting.date} at {meeting.time}
                         </span>
                       </div>
-                      <span style={{
-                        background: "rgba(0,0,0,0.05)",
-                        padding: "2px 8px",
-                        borderRadius: "4px",
-                        fontSize: "0.72rem",
-                        height: "fit-content",
-                        fontWeight: 600
-                      }}>
-                        Participants: {meeting.participants.join(", ")}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{
+                          background: "rgba(0,0,0,0.05)",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          fontSize: "0.72rem",
+                          height: "fit-content",
+                          fontWeight: 600
+                        }}>
+                          Participants: {meeting.participants.join(", ")}
+                        </span>
+                        <button
+                          className="icon-button"
+                          onClick={() => handleDeleteMeeting(meeting.id)}
+                          style={{ height: "24px", width: "24px", padding: 0 }}
+                          title="Delete Meeting"
+                        >
+                          <Trash2 size={12} style={{ color: "var(--red)" }} />
+                        </button>
+                      </div>
                     </div>
 
                     <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--ink)", lineHeight: "1.4" }}>
@@ -1045,10 +1088,20 @@ export default function ProjectDetailsView({
             <div className="panel" style={{ padding: "20px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
                 
-                {projectTeam.map((member: any) => {
+                {projectTeam.length === 0 ? (
+                  <p style={{ gridColumn: "1 / -1", textAlign: "center", color: "var(--muted)", fontSize: "0.85rem", padding: "20px" }}>
+                    No team members are currently assigned to this project's tasks.
+                  </p>
+                ) : (
+                  projectTeam.map((member: any) => {
                     const name = member.fields?.name || member.title || "Team Member";
                     const isYug = name.toLowerCase().includes("yug");
-                    const currentTask = isYug ? "Embeddings indexing & scaling" : "Staging layout & UI updates";
+                    
+                    // Filter tasks assigned to this member in this project
+                    const memberTasks = projectTasks.filter((t: any) => t.assignedEmployeeIds?.includes(member.id));
+                    const currentTask = memberTasks.length > 0 
+                      ? memberTasks.map((t: any) => t.title).join(", ") 
+                      : "No tasks assigned";
                     
                     return (
                       <div
@@ -1103,13 +1156,14 @@ export default function ProjectDetailsView({
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis"
-                          }}>
+                          }} title={currentTask}>
                             Task: {currentTask}
                           </span>
                         </div>
                       </div>
                     );
-                  })}
+                  })
+                )}
               </div>
             </div>
           )}
@@ -1123,29 +1177,17 @@ export default function ProjectDetailsView({
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   <h4 style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)", textTransform: "uppercase" }}>Velocity & Productivity</h4>
                   
-                  <div style={{ display: "flex", justifyContent: "space-around", gap: "10px", marginTop: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "16px" }}>
                     <div style={{ textAlign: "center" }}>
-                      <svg width="80" height="80" viewBox="0 0 100 100">
+                      <svg width="100" height="100" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--line)" strokeWidth="6" />
                         <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--green)" strokeWidth="6"
                           strokeDasharray={2 * Math.PI * 40}
                           strokeDashoffset={2 * Math.PI * 40 * (1 - taskStats.progress / 100)}
                         />
                       </svg>
-                      <span style={{ display: "block", fontSize: "0.9rem", fontWeight: 700, marginTop: "6px" }}>{taskStats.progress}%</span>
-                      <small style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Overall Done</small>
-                    </div>
-
-                    <div style={{ textAlign: "center" }}>
-                      <svg width="80" height="80" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--line)" strokeWidth="6" />
-                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--teal)" strokeWidth="6"
-                          strokeDasharray={2 * Math.PI * 40}
-                          strokeDashoffset={2 * Math.PI * 40 * 0.28}
-                        />
-                      </svg>
-                      <span style={{ display: "block", fontSize: "0.9rem", fontWeight: 700, marginTop: "6px" }}>72%</span>
-                      <small style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Sprint Progress</small>
+                      <span style={{ display: "block", fontSize: "1rem", fontWeight: 700, marginTop: "6px" }}>{taskStats.progress}%</span>
+                      <small style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Overall Progress</small>
                     </div>
                   </div>
                 </div>
@@ -1154,35 +1196,36 @@ export default function ProjectDetailsView({
                 <div>
                   <h4 style={{ margin: "0 0 16px", fontSize: "0.85rem", color: "var(--muted)", textTransform: "uppercase" }}>Weekly Completed Tasks</h4>
                   
-                  <svg width="100%" height="120" viewBox="0 0 300 120" style={{ overflow: "visible" }}>
-                    {/* Grid lines */}
-                    <line x1="0" y1="10" x2="300" y2="10" stroke="rgba(0,0,0,0.05)" />
-                    <line x1="0" y1="50" x2="300" y2="50" stroke="rgba(0,0,0,0.05)" />
-                    <line x1="0" y1="90" x2="300" y2="90" stroke="rgba(0,0,0,0.05)" />
-                    <line x1="0" y1="110" x2="300" y2="110" stroke="var(--line)" />
-                    
-                    {/* Weekly bars (Mock Data) */}
-                    {[
-                      { week: "Wk 24", count: 2, height: 35 },
-                      { week: "Wk 25", count: 4, height: 70 },
-                      { week: "Wk 26", count: 3, height: 50 },
-                      { week: "Wk 27", count: 6, height: 95 }
-                    ].map((wk: any, i: number) => (
-                      <g key={i} transform={`translate(${i * 70 + 35}, 0)`}>
-                        <rect
-                          x="0"
-                          y={110 - wk.height}
-                          width="24"
-                          height={wk.height}
-                          rx="4"
-                          fill="var(--green)"
-                          style={{ transition: "height 0.6s ease" }}
-                        />
-                        <text x="12" y="118" fill="var(--muted)" fontSize="9" textAnchor="middle">{wk.week}</text>
-                        <text x="12" y={105 - wk.height} fill="var(--ink)" fontSize="10" fontWeight="700" textAnchor="middle">{wk.count}</text>
-                      </g>
-                    ))}
-                  </svg>
+                  {weeklyTaskCounts.length === 0 ? (
+                    <div style={{ height: "120px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px dashed var(--line)", borderRadius: "8px" }}>
+                      <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>No completed tasks activity recorded yet.</span>
+                    </div>
+                  ) : (
+                    <svg width="100%" height="120" viewBox="0 0 300 120" style={{ overflow: "visible" }}>
+                      {/* Grid lines */}
+                      <line x1="0" y1="10" x2="300" y2="10" stroke="rgba(0,0,0,0.05)" />
+                      <line x1="0" y1="50" x2="300" y2="50" stroke="rgba(0,0,0,0.05)" />
+                      <line x1="0" y1="90" x2="300" y2="90" stroke="rgba(0,0,0,0.05)" />
+                      <line x1="0" y1="110" x2="300" y2="110" stroke="var(--line)" />
+                      
+                      {/* Weekly bars (Dynamic Data) */}
+                      {weeklyTaskCounts.map((wk: any, i: number) => (
+                        <g key={i} transform={`translate(${i * 70 + 35}, 0)`}>
+                          <rect
+                            x="0"
+                            y={110 - wk.height}
+                            width="24"
+                            height={wk.height}
+                            rx="4"
+                            fill="var(--green)"
+                            style={{ transition: "height 0.6s ease" }}
+                          />
+                          <text x="12" y="118" fill="var(--muted)" fontSize="9" textAnchor="middle">{wk.week}</text>
+                          <text x="12" y={105 - wk.height} fill="var(--ink)" fontSize="10" fontWeight="700" textAnchor="middle">{wk.count}</text>
+                        </g>
+                      ))}
+                    </svg>
+                  )}
                 </div>
               </div>
 
@@ -1196,12 +1239,16 @@ export default function ProjectDetailsView({
                 marginTop: "16px"
               }}>
                 <div>
-                  <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Avg Completion Time</span>
-                  <strong style={{ display: "block", fontSize: "1.1rem", color: "var(--ink)", marginTop: "2px" }}>4.2 Days</strong>
+                  <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Total Tasks</span>
+                  <strong style={{ display: "block", fontSize: "1.1rem", color: "var(--ink)", marginTop: "2px" }}>
+                    {taskStats.total} {taskStats.total === 1 ? "task" : "tasks"}
+                  </strong>
                 </div>
                 <div>
                   <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Active Members</span>
-                  <strong style={{ display: "block", fontSize: "1.1rem", color: "var(--ink)", marginTop: "2px" }}>3 developers</strong>
+                  <strong style={{ display: "block", fontSize: "1.1rem", color: "var(--ink)", marginTop: "2px" }}>
+                    {projectTeam.length} {projectTeam.length === 1 ? "developer" : "developers"}
+                  </strong>
                 </div>
                 <div>
                   <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Meetings Held</span>
@@ -1219,9 +1266,18 @@ export default function ProjectDetailsView({
                 <button
                   className="primary-button"
                   onClick={() => setShowAddRiskModal(true)}
-                  style={{ minHeight: "32px", padding: "0 12px", borderRadius: "8px", fontSize: "0.8rem" }}
+                  style={{
+                    minHeight: "32px",
+                    padding: "0 12px",
+                    borderRadius: "8px",
+                    fontSize: "0.8rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
                 >
-                  ➕ Add Risk Log
+                  <Plus size={14} style={{ color: "#fff" }} />
+                  <span>Add Risk Log</span>
                 </button>
               </div>
 
@@ -1249,17 +1305,27 @@ export default function ProjectDetailsView({
                         <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--ink)", fontWeight: 700 }}>
                           {risk.title}
                         </h4>
-                        <span style={{
-                          background: `${pColor}20`,
-                          color: pColor,
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                          textTransform: "uppercase"
-                        }}>
-                          {risk.priority}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{
+                            background: `${pColor}20`,
+                            color: pColor,
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            textTransform: "uppercase"
+                          }}>
+                            {risk.priority}
+                          </span>
+                          <button
+                            className="icon-button"
+                            onClick={() => handleDeleteRisk(risk.id)}
+                            style={{ height: "24px", width: "24px", padding: 0 }}
+                            title="Delete Risk Log"
+                          >
+                            <Trash2 size={12} style={{ color: "var(--red)" }} />
+                          </button>
+                        </div>
                       </div>
                       <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--muted)", lineHeight: "1.4" }}>
                         {risk.description}
