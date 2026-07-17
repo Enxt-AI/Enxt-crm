@@ -621,21 +621,13 @@ export default function ProjectDetailsView({
       </header>
 
       {/* DASHBOARD GRID CONTENT */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 300px", gap: "24px", alignItems: "start" }}>
+      <div className="project-details-grid">
         
         {/* LEFT COLUMN: NAVIGATION AND TAB PANELS */}
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           
           {/* TAB BAR NAVIGATION */}
-          <nav style={{
-            display: "flex",
-            gap: "4px",
-            background: "rgba(0, 0, 0, 0.03)",
-            padding: "4px",
-            borderRadius: "12px",
-            border: "1px solid var(--line)",
-            alignSelf: "flex-start"
-          }}>
+          <nav className="project-tab-nav">
             {([
               { id: "overview", label: "Overview", icon: Activity },
               { id: "documents", label: "Documents", icon: FileText },
@@ -757,7 +749,7 @@ export default function ProjectDetailsView({
               </div>
 
               {/* TIMELINE & DEADLINES */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", alignItems: "start" }}>
+              <div className="project-timeline-grid">
                 
                 {/* TIMELINE PANEL */}
                 <div className="panel" style={{ padding: "20px" }}>
@@ -1167,7 +1159,7 @@ export default function ProjectDetailsView({
           {/* TAB PANEL 5: ANALYTICS */}
           {activeTab === "analytics" && (
             <div className="panel" style={{ padding: "20px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "24px" }}>
+              <div className="project-analytics-grid">
                 
                 {/* 1. Task Completion Progression (SVG Donut Stack) */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
