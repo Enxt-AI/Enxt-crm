@@ -33,7 +33,8 @@ import {
   Activity,
   Upload,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Download
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -2093,29 +2094,54 @@ function EmployeeDocumentViewer({
               gap: '10px'
             }}>
               <span style={{ fontSize: '0.82rem', color: 'var(--ink)' }}>
-                If the document preview below doesn't load due to browser cookie restrictions:
+                {viewedDoc.url.startsWith("data:") 
+                  ? "This document is stored locally in the database. You can view it below or download it directly:" 
+                  : "If the document preview below doesn't load due to browser cookie restrictions:"}
               </span>
-              <a
-                href={viewedDoc.url}
-                rel="noreferrer"
-                target="_blank"
-                className="primary-button"
-                style={{
-                  minHeight: '32px',
-                  padding: '0 12px',
-                  borderRadius: '6px',
-                  fontSize: '0.78rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  textDecoration: 'none',
-                  color: 'white',
-                  background: 'var(--green)'
-                }}
-              >
-                <ExternalLink size={12} />
-                <span>Open in Google Drive</span>
-              </a>
+              {viewedDoc.url.startsWith("data:") ? (
+                <a
+                  href={viewedDoc.url}
+                  download={viewedDoc.value || "document.pdf"}
+                  className="primary-button"
+                  style={{
+                    minHeight: '32px',
+                    padding: '0 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    textDecoration: 'none',
+                    color: 'white',
+                    background: 'var(--green)'
+                  }}
+                >
+                  <Download size={12} />
+                  <span>Download Document</span>
+                </a>
+              ) : (
+                <a
+                  href={viewedDoc.url}
+                  rel="noreferrer"
+                  target="_blank"
+                  className="primary-button"
+                  style={{
+                    minHeight: '32px',
+                    padding: '0 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    textDecoration: 'none',
+                    color: 'white',
+                    background: 'var(--green)'
+                  }}
+                >
+                  <ExternalLink size={12} />
+                  <span>Open in Google Drive</span>
+                </a>
+              )}
             </div>
             <div style={{ position: 'relative', height: '450px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--line)' }}>
               <iframe 
