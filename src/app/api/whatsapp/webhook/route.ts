@@ -156,10 +156,10 @@ async function processWebhookPayload(payload: any) {
     const cleanFrom = from.replace(/\D/g, '');
     const phoneLast10 = cleanFrom.slice(-10);
 
-    // Identify if the sender is an Admin
+    // Identify if the sender is an Admin (matching by last 10 digits to bypass country code format variations)
     const adminPhonesEnv = process.env.ADMIN_PHONE_NUMBERS || '917056754400';
     const ADMIN_PHONES = adminPhonesEnv.split(',').map(p => p.trim().replace(/\D/g, ''));
-    const isAdmin = ADMIN_PHONES.includes(cleanFrom);
+    let isAdmin = ADMIN_PHONES.some(p => p.slice(-10) === phoneLast10);
 
     console.log(`[whatsapp webhook bg-worker] Loading documents, tasks, and pending requests in parallel...`);
     
@@ -195,6 +195,19 @@ async function processWebhookPayload(payload: any) {
       const cleanPhone = phone.replace(/\D/g, '');
       return cleanPhone.includes(cleanFrom) || cleanFrom.includes(cleanPhone);
     });
+
+    const empRole = String(employee?.fields?.role || '').toLowerCase();
+    const isEmpAdmin = empRole.includes('admin') || 
+                      empRole.includes('manager') || 
+                      empRole.includes('lead') || 
+                      empRole.includes('head') || 
+                      empRole.includes('founder') || 
+                      empRole.includes('executive') || 
+                      empRole.includes('director');
+
+    if (isEmpAdmin) {
+      isAdmin = true;
+    }
 
     const employeeName = employee?.fields?.name || employee?.title || (isAdmin ? "Admin Manager" : "Unknown User");
 
