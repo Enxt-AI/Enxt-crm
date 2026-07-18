@@ -2079,11 +2079,50 @@ function EmployeeDocumentViewer({
             </div>
           </div>
         ) : previewUrl ? (
-          <div className="document-preview-frame">
-            <iframe src={previewUrl} title={`${viewedDoc.employeeName} ${viewedDoc.label}`} />
-            <a href={viewedDoc.url} rel="noreferrer" target="_blank">
-              Open original file
-            </a>
+          <div className="document-preview-frame" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+            <div style={{
+              background: 'var(--green-soft)',
+              border: '1px solid var(--green)',
+              borderRadius: '8px',
+              padding: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '10px'
+            }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--ink)' }}>
+                If the document preview below doesn't load due to browser cookie restrictions:
+              </span>
+              <a
+                href={viewedDoc.url}
+                rel="noreferrer"
+                target="_blank"
+                className="primary-button"
+                style={{
+                  minHeight: '32px',
+                  padding: '0 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  textDecoration: 'none',
+                  color: 'white',
+                  background: 'var(--green)'
+                }}
+              >
+                <ExternalLink size={12} />
+                <span>Open in Google Drive</span>
+              </a>
+            </div>
+            <div style={{ position: 'relative', height: '450px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--line)' }}>
+              <iframe 
+                src={previewUrl} 
+                title={`${viewedDoc.employeeName} ${viewedDoc.label}`} 
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
+            </div>
           </div>
         ) : (
           <div className="document-preview-box">
