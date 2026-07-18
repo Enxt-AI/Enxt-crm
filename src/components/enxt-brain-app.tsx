@@ -1824,16 +1824,23 @@ async function uploadFileDirectlyToGoogleDrive(file: File): Promise<{
   const tokenData = await tokenRes.json();
 
   if (tokenData.mocked) {
-    console.log("Using client-side sandbox simulation for file upload");
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    const mockFileId = `sim-drive-${Date.now()}`;
-    return {
-      success: true,
-      fileId: mockFileId,
-      fileName: file.name,
-      webViewLink: `https://drive.google.com/file/d/${mockFileId}/view?usp=drivesdk`,
-      mocked: true
-    };
+    console.log("Using client-side base64 storage for file upload (Google sandbox fallback)");
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve({
+          success: true,
+          fileId: `db-${Date.now()}`,
+          fileName: file.name,
+          webViewLink: reader.result as string,
+          mocked: false
+        });
+      };
+      reader.onerror = () => {
+        reject(new Error("Failed to read file locally."));
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   const { accessToken, folderId } = tokenData;
