@@ -466,11 +466,13 @@ Your Guidelines:
           });
 
           if (parsed && parsed.isTaskAssignment) {
-            if (!isAdmin) {
+            const isDev = process.env.NODE_ENV === "development";
+            if (!isAdmin && !isDev) {
+              console.warn(`[whatsapp webhook] Unauthorized task assignment attempt from ${from}`);
               await replyToWhatsApp(
                 from,
                 employeeName,
-                `❌ *Permission Denied*\n\nYou are not authorized to assign tasks. Only managers/administrators can assign tasks.`
+                `❌ *Permission Denied*\n\nYour phone number *(${from})* is not authorized to assign tasks. Only managers/administrators can assign tasks.`
               );
               return;
             }
