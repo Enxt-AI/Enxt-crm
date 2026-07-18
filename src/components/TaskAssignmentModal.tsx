@@ -29,6 +29,14 @@ interface TaskFormProps {
   editTask?: TaskData | null;
 }
 
+const getTodayString = () => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export default function TaskAssignmentModal({
   employees,
   projects = [],
@@ -253,6 +261,7 @@ export default function TaskAssignmentModal({
                   <input
                     type="date"
                     value={dueDate}
+                    min={getTodayString()}
                     onChange={(e) => setDueDate(e.target.value)}
                     style={{ width: '100%', boxSizing: 'border-box' }}
                   />
