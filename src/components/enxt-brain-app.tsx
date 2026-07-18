@@ -3273,27 +3273,7 @@ function CrmView({ leads, onUpdateLead, onAddLead, onDeleteLead }: { leads: Brai
           })}
         </section>
 
-        <div className="lead-scroll-controls" aria-label="Pipeline horizontal scroll controls">
-          <button onClick={() => scrollBoard("left")} type="button" disabled={boardScroll.left <= 0}>
-            <span aria-hidden="true">‹</span>
-            Left
-          </button>
-          <div className="lead-scroll-track">
-            <span
-              style={{
-                width: boardScroll.max > 0 ? `${Math.max(14, 100 / ((boardScroll.max + 1) / 100))}%` : "100%",
-                transform:
-                  boardScroll.max > 0
-                    ? `translateX(${(boardScroll.left / boardScroll.max) * 100}%)`
-                    : "translateX(0)"
-              }}
-            />
-          </div>
-          <button onClick={() => scrollBoard("right")} type="button" disabled={boardScroll.left >= boardScroll.max - 2}>
-            Right
-            <span aria-hidden="true">›</span>
-          </button>
-        </div>
+
 
         {filteredLeads.length === 0 && (
           <div className="empty-state">
