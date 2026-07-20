@@ -156,6 +156,7 @@ const leadStages = ["Old Leads", "Contacts", "Proposal", "Project Started", "Com
 export default function EnxtBrainApp() {
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [showProjectCalendar, setShowProjectCalendar] = useState(false);
   const [viewedDocument, setViewedDocument] = useState<ViewedEmployeeDocument | null>(null);
   const [documents, setDocuments] = useState<BrainDocument[]>(brainDocuments);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -907,6 +908,8 @@ export default function EnxtBrainApp() {
                   setActiveProjectId(projId);
                   setActiveView("projects");
                 }}
+                showProjectCalendar={showProjectCalendar}
+                setShowProjectCalendar={setShowProjectCalendar}
               />
             )}
 
@@ -1121,16 +1124,18 @@ export default function EnxtBrainApp() {
         </aside>
       </div>
       {/* Mobile Chatbot FAB */}
-      <button
-        className={`mobile-chat-fab ${isAiPanelOpen ? 'panel-open' : ''}`}
-        onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
-        title="Toggle AI Chat"
-      >
-        <span className="fab-tooltip">Ask Enxt Brain</span>
-        <span className="fab-icon-wrapper">
-          {isAiPanelOpen ? <X size={24} /> : <BotMessageSquare size={24} />}
-        </span>
-      </button>
+      {!showProjectCalendar && (
+        <button
+          className={`mobile-chat-fab ${isAiPanelOpen ? 'panel-open' : ''}`}
+          onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+          title="Toggle AI Chat"
+        >
+          <span className="fab-tooltip">Ask Enxt Brain</span>
+          <span className="fab-icon-wrapper">
+            {isAiPanelOpen ? <X size={24} /> : <BotMessageSquare size={24} />}
+          </span>
+        </button>
+      )}
 
       {globalToast && (
         <div 
@@ -3025,7 +3030,9 @@ function CrmView({
   onAddLead,
   onDeleteLead,
   onUpdateProject,
-  onViewProject
+  onViewProject,
+  showProjectCalendar,
+  setShowProjectCalendar
 }: {
   leads: BrainDocument[];
   projects: BrainDocument[];
@@ -3036,11 +3043,12 @@ function CrmView({
   onDeleteLead: (leadId: string) => void;
   onUpdateProject: (projectId: string, fields: Record<string, any>) => void;
   onViewProject: (projectId: string) => void;
+  showProjectCalendar: boolean;
+  setShowProjectCalendar: (show: boolean) => void;
 }) {
   const [leadSearch, setLeadSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [signedFilter, setSignedFilter] = useState("All");
-  const [showProjectCalendar, setShowProjectCalendar] = useState(false);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [expandedLeadIds, setExpandedLeadIds] = useState<string[]>([]);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
