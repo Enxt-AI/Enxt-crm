@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     }
     const digits = cleanTo.replace(/\D/g, '');
     let formattedTo = digits;
-    
+
     // If it's a 10-digit number, prepend '91' (default to India country code)
     if (digits.length === 10) {
       formattedTo = `91${digits}`;
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
 
       // 1b. Free-form text message (works within 24-hour window only)
       console.log('[whatsapp send api] Dispatching free-form text via Meta Cloud API to:', formattedTo);
-      
+
       const res = await fetch(url, {
         method: 'POST',
         headers: {

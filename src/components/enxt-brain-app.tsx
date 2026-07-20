@@ -34,7 +34,8 @@ import {
   Upload,
   Loader2,
   ExternalLink,
-  Download
+  Download,
+  Calendar
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -42,8 +43,7 @@ import { createPortal } from "react-dom";
 import EmployeeTasksView from "./EmployeeTasksView";
 import TaskAssignmentModal from "./TaskAssignmentModal";
 import ProjectDetailsView from "./ProjectDetailsView";
-
-
+import ProjectCalendarView from "./ProjectCalendarView";
 
 // Finance view component
 import FinanceView from "./FinanceView";
@@ -155,6 +155,7 @@ function AnimatedValue({ value }: { value: string | number }) {
 const leadStages = ["Old Leads", "Contacts", "Proposal", "Project Started", "Completed"] as const;
 export default function EnxtBrainApp() {
   const [activeView, setActiveView] = useState<View>("dashboard");
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [viewedDocument, setViewedDocument] = useState<ViewedEmployeeDocument | null>(null);
   const [documents, setDocuments] = useState<BrainDocument[]>(brainDocuments);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -343,7 +344,13 @@ export default function EnxtBrainApp() {
     .filter((employee) => asText(employee, "status") === "Active")
     .reduce((total, employee) => total + asNumber(employee, "monthlySalaryInr"), 0);
   const projectBudget = projects.reduce((total, project) => total + asNumber(project, "budgetInr"), 0);
-  const pipelineValue = leads.reduce((total, lead) => total + asNumber(lead, "potentialValueInr"), 0);
+  const pipelineValue = leads.reduce((total, lead) => {
+    const stage = asText(lead, "stage");
+    if (stage === "Contacts" || stage === "Proposal" || stage === "Project Started" || stage === "Completed") {
+      return total + asNumber(lead, "potentialValueInr");
+    }
+    return total;
+  }, 0);
   const clientValue = clients.reduce((total, client) => total + asNumber(client, "annualValueInr"), 0);
 
   const filteredDocuments = useMemo(() => {
@@ -531,6 +538,11 @@ export default function EnxtBrainApp() {
         };
       })
     );
+  };
+
+  const deleteProject = (projectId: string) => {
+    setDocuments((current) => current.filter((document) => document.id !== projectId));
+    showToast("Project deleted successfully", "success");
   };
 
   const addProject = (fields: Record<string, string>) => {
@@ -875,10 +887,28 @@ export default function EnxtBrainApp() {
                 onUpdateProject={updateProject}
                 onViewDocument={setViewedDocument}
                 onAddProject={addProject}
+                onDeleteProject={deleteProject}
+                defaultSelectedProjectId={activeProjectId}
+                onSelectProject={setActiveProjectId}
               />
             )}
 
-            {activeView === "crm" && <CrmView leads={leads} onUpdateLead={updateLead} onAddLead={addLead} onDeleteLead={deleteLead} />}
+            {activeView === "crm" && (
+              <CrmView 
+                leads={leads} 
+                projects={projects}
+                employees={employees}
+                allTasks={allTasks}
+                onUpdateLead={updateLead} 
+                onAddLead={addLead} 
+                onDeleteLead={deleteLead}
+                onUpdateProject={updateProject}
+                onViewProject={(projId) => {
+                  setActiveProjectId(projId);
+                  setActiveView("projects");
+                }}
+              />
+            )}
 
             {activeView === "finance" && (
               <FinanceView />
@@ -1152,7 +1182,11 @@ function DashboardView({
   selectDocument: (document: BrainDocument) => void;
 }) {
   const amberProjects = projects.filter((project) => asText(project, "health") === "Amber");
-  const topLeads = [...leads].sort((a, b) => asNumber(b, "potentialValueInr") - asNumber(a, "potentialValueInr")).slice(0, 3);
+  const activeLeads = leads.filter((l) => {
+    const stage = asText(l, "stage");
+    return stage === "Contacts" || stage === "Proposal" || stage === "Project Started" || stage === "Completed";
+  });
+  const topLeads = [...activeLeads].sort((a, b) => asNumber(b, "potentialValueInr") - asNumber(a, "potentialValueInr")).slice(0, 3);
 
   return (
     <>
@@ -1160,7 +1194,7 @@ function DashboardView({
         <MetricCard icon={Users} label="Employees" value={`${employees.length}`} detail={`${formatCurrency(monthlyPayroll)} monthly payroll`} />
         <MetricCard icon={SquareKanban} label="AI Projects" value={`${projects.length}`} detail={`${formatCurrency(projectBudget)} scoped budget`} />
         <MetricCard icon={Building2} label="Clients" value={`${clients.length}`} detail={`${formatCurrency(clientValue)} annual value`} />
-        <MetricCard icon={BadgeIndianRupee} label="Lead Pipeline" value={formatCurrency(pipelineValue)} detail={`${leads.length} open leads`} />
+        <MetricCard icon={BadgeIndianRupee} label="Lead Pipeline" value={formatCurrency(pipelineValue)} detail={`${activeLeads.length} open leads`} />
       </section>
 
       <section className="two-column">
@@ -2698,7 +2732,10 @@ function ProjectsView({
   selectDocument,
   onUpdateProject,
   onViewDocument,
-  onAddProject
+  onAddProject,
+  onDeleteProject,
+  defaultSelectedProjectId,
+  onSelectProject
 }: {
   projects: BrainDocument[];
   employees: any[];
@@ -2707,12 +2744,21 @@ function ProjectsView({
   onUpdateProject: (projectId: string, fields: Record<string, string>) => void;
   onViewDocument: (document: ViewedEmployeeDocument) => void;
   onAddProject: (fields: Record<string, string>) => void;
+  onDeleteProject: (projectId: string) => void;
+  defaultSelectedProjectId?: string | null;
+  onSelectProject?: (projectId: string | null) => void;
 }) {
   const [isAddingNewProject, setIsAddingNewProject] = useState(false);
   const [editingProject, setEditingProject] = useState<BrainDocument | null>(null);
   const [newDocLabelProjectId, setNewDocLabelProjectId] = useState<string | null>(null);
   const [newDocLabelText, setNewDocLabelText] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(defaultSelectedProjectId || null);
+
+  useEffect(() => {
+    if (defaultSelectedProjectId !== undefined) {
+      setSelectedProjectId(defaultSelectedProjectId);
+    }
+  }, [defaultSelectedProjectId]);
 
   const selectedProj = projects.find(p => p.id === selectedProjectId);
 
@@ -2723,7 +2769,12 @@ function ProjectsView({
         employees={employees}
         onUpdateProject={onUpdateProject}
         onViewDocument={onViewDocument}
-        onBack={() => setSelectedProjectId(null)}
+        onBack={() => {
+          setSelectedProjectId(null);
+          if (onSelectProject) {
+            onSelectProject(null);
+          }
+        }}
         allTasks={allTasks}
       />
     );
@@ -2914,6 +2965,32 @@ function ProjectsView({
                 <Pencil size={12} />
                 <span>Edit Details</span>
               </button>
+
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete the project "${project.title}"?`)) {
+                    onDeleteProject(project.id);
+                  }
+                }}
+                type="button"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "6px",
+                  padding: "8px 12px",
+                  border: "1px solid #fca5a5",
+                  background: "#fff5f5",
+                  color: "#dc2626",
+                  cursor: "pointer",
+                  minHeight: "36px",
+                  transition: "all var(--transition-fast)"
+                }}
+                title="Delete Project"
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
           </article>
         ))}
@@ -2939,10 +3016,31 @@ function ProjectsView({
   );
 }
 
-function CrmView({ leads, onUpdateLead, onAddLead, onDeleteLead }: { leads: BrainDocument[]; onUpdateLead: (leadId: string, fields: LeadEditState) => void; onAddLead: (fields: LeadEditState) => void; onDeleteLead: (leadId: string) => void }) {
+function CrmView({
+  leads,
+  projects,
+  employees,
+  allTasks = [],
+  onUpdateLead,
+  onAddLead,
+  onDeleteLead,
+  onUpdateProject,
+  onViewProject
+}: {
+  leads: BrainDocument[];
+  projects: BrainDocument[];
+  employees: BrainDocument[];
+  allTasks?: any[];
+  onUpdateLead: (leadId: string, fields: LeadEditState) => void;
+  onAddLead: (fields: LeadEditState) => void;
+  onDeleteLead: (leadId: string) => void;
+  onUpdateProject: (projectId: string, fields: Record<string, any>) => void;
+  onViewProject: (projectId: string) => void;
+}) {
   const [leadSearch, setLeadSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [signedFilter, setSignedFilter] = useState("All");
+  const [showProjectCalendar, setShowProjectCalendar] = useState(false);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [expandedLeadIds, setExpandedLeadIds] = useState<string[]>([]);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
@@ -2951,7 +3049,13 @@ function CrmView({ leads, onUpdateLead, onAddLead, onDeleteLead }: { leads: Brai
   const leadBoardRef = useRef<HTMLElement | null>(null);
   const [boardScroll, setBoardScroll] = useState({ left: 0, max: 0 });
   const editingLead = leads.find((lead) => lead.id === editingLeadId);
-  const totalPipeline = leads.reduce((total, lead) => total + asNumber(lead, "potentialValueInr"), 0);
+  const totalPipeline = leads.reduce((total, lead) => {
+    const stage = asText(lead, "stage");
+    if (stage === "Contacts" || stage === "Proposal" || stage === "Project Started" || stage === "Completed") {
+      return total + asNumber(lead, "potentialValueInr");
+    }
+    return total;
+  }, 0);
   const projectStartedCount = leads.filter((lead) => asText(lead, "stage") === "Project Started").length;
   const completedCount = leads.filter((lead) => asText(lead, "stage") === "Completed").length;
   const oldLeadCount = leads.filter((lead) => asText(lead, "stage") === "Old Leads").length;
@@ -3071,6 +3175,29 @@ function CrmView({ leads, onUpdateLead, onAddLead, onDeleteLead }: { leads: Brai
     );
   };
 
+  if (showProjectCalendar) {
+    return (
+      <ProjectCalendarView
+        projects={projects}
+        leads={leads}
+        employees={employees}
+        allTasks={allTasks}
+        onUpdateProject={onUpdateProject}
+        onUpdateLead={onUpdateLead}
+        onViewProject={(projId) => {
+          onViewProject(projId);
+          setShowProjectCalendar(false);
+        }}
+        onEditLead={(leadDoc) => {
+          setEditingLeadId(leadDoc.id);
+          setLeadEditFields(leadDoc.fields);
+          setShowProjectCalendar(false);
+        }}
+        onClose={() => setShowProjectCalendar(false)}
+      />
+    );
+  }
+
   return (
     <>
       <section className="panel crm-leads-panel">
@@ -3080,17 +3207,40 @@ function CrmView({ leads, onUpdateLead, onAddLead, onDeleteLead }: { leads: Brai
               <p className="eyebrow">Pipeline</p>
               <h3>Lead Workspace</h3>
             </div>
-            <button
-              className="primary-button"
-              onClick={() => {
-                setIsAddingNewLead(true);
-                setLeadEditFields({});
-              }}
-              type="button"
-            >
-              <UserPlus size={16} aria-hidden="true" />
-              <span>Add Client</span>
-            </button>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                className="secondary-button"
+                onClick={() => setShowProjectCalendar(true)}
+                type="button"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  border: "1px solid var(--line)",
+                  background: "var(--panel)",
+                  padding: "8px 14px",
+                  borderRadius: "8px",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  minHeight: "36px"
+                }}
+              >
+                <Calendar size={15} aria-hidden="true" />
+                <span>Project Calendar</span>
+              </button>
+              <button
+                className="primary-button"
+                onClick={() => {
+                  setIsAddingNewLead(true);
+                  setLeadEditFields({});
+                }}
+                type="button"
+              >
+                <UserPlus size={16} aria-hidden="true" />
+                <span>Add Client</span>
+              </button>
+            </div>
           </div>
           <div className="employee-kpis">
             <div role="button" tabIndex={0} onClick={() => { setStageFilter("All"); setSignedFilter("All"); }} style={{ cursor: "pointer" }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setStageFilter("All"); setSignedFilter("All"); } }}>
