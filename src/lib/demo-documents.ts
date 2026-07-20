@@ -790,9 +790,168 @@ AI writes should not silently mutate company memory. The safe workflow is: ident
   }
 ];
 
+export const initialMockSubscriptions: BrainDocument[] = [
+  {
+    id: "sub-openai",
+    type: "subscription",
+    title: "OpenAI API",
+    status: "Active",
+    owner: "Rohan Iyer",
+    updatedAt: today,
+    tags: ["subscription", "AI Tools", "Active"],
+    fields: {
+      serviceName: "OpenAI API",
+      vendor: "OpenAI Inc.",
+      website: "https://openai.com",
+      category: "AI Tools",
+      description: "LLM API access for GPT-4o, GPT-4, and embeddings for Enxt Brain product development.",
+      billingCycle: "Monthly",
+      currency: "USD",
+      cost: 850,
+      tax: 0,
+      totalAmount: 850,
+      purchaseDate: "2025-01-15",
+      startDate: "2025-01-15",
+      renewalDate: "2026-07-28",
+      owner: "Rohan Iyer",
+      department: "Engineering",
+      paymentMethod: "Corporate Visa - 4821",
+      billingEmail: "engineering@enxt.ai",
+      autoRenewal: true,
+      status: "Active"
+    },
+    body: "LLM API access for GPT-4o, GPT-4, and embeddings for Enxt Brain product development."
+  },
+  {
+    id: "sub-higgsfield",
+    type: "subscription",
+    title: "Higgsfield AI",
+    status: "Due Soon",
+    owner: "Priya Nair",
+    updatedAt: today,
+    tags: ["subscription", "AI Tools", "Due Soon"],
+    fields: {
+      serviceName: "Higgsfield AI",
+      vendor: "Higgsfield Inc.",
+      website: "https://higgsfield.ai",
+      category: "AI Tools",
+      description: "Video generation models license for social marketing and AI research.",
+      billingCycle: "Monthly",
+      currency: "USD",
+      cost: 250,
+      tax: 0,
+      totalAmount: 250,
+      purchaseDate: "2025-03-10",
+      startDate: "2025-03-10",
+      renewalDate: "2026-07-24",
+      owner: "Priya Nair",
+      department: "Marketing",
+      paymentMethod: "Corporate Visa - 4821",
+      billingEmail: "marketing@enxt.ai",
+      autoRenewal: true,
+      status: "Due Soon"
+    },
+    body: "Video generation models license for social marketing and AI research."
+  },
+  {
+    id: "sub-vercel",
+    type: "subscription",
+    title: "Vercel Pro",
+    status: "Expired",
+    owner: "Rohan Iyer",
+    updatedAt: today,
+    tags: ["subscription", "Cloud Hosting", "Expired"],
+    fields: {
+      serviceName: "Vercel Pro",
+      vendor: "Vercel Inc.",
+      website: "https://vercel.com",
+      category: "Cloud Hosting",
+      description: "Production hosting and serverless functions deployment platform for customer apps.",
+      billingCycle: "Monthly",
+      currency: "USD",
+      cost: 40,
+      tax: 0,
+      totalAmount: 40,
+      purchaseDate: "2024-06-05",
+      startDate: "2024-06-05",
+      renewalDate: "2026-07-05",
+      owner: "Rohan Iyer",
+      department: "Engineering",
+      paymentMethod: "Corporate Visa - 4821",
+      billingEmail: "finance@enxt.ai",
+      autoRenewal: false,
+      status: "Expired"
+    },
+    body: "Production hosting and serverless functions deployment platform for customer apps."
+  },
+  {
+    id: "sub-google-workspace",
+    type: "subscription",
+    title: "Google Workspace",
+    status: "Renewal Needed",
+    owner: "Aisha Menon",
+    updatedAt: today,
+    tags: ["subscription", "Communication", "Renewal Needed"],
+    fields: {
+      serviceName: "Google Workspace",
+      vendor: "Google LLC",
+      website: "https://workspace.google.com",
+      category: "Communication",
+      description: "Enterprise email, Google Drive cloud storage, and office suite for all active employees.",
+      billingCycle: "Monthly",
+      currency: "INR",
+      cost: 12800,
+      tax: 2304,
+      totalAmount: 15104,
+      purchaseDate: "2023-11-20",
+      startDate: "2023-11-20",
+      renewalDate: "2026-07-20",
+      owner: "Aisha Menon",
+      department: "HR & Admin",
+      paymentMethod: "Auto Debit - HDFC Bank",
+      billingEmail: "hr@enxt.ai",
+      autoRenewal: true,
+      status: "Renewal Needed"
+    },
+    body: "Enterprise email, Google Drive cloud storage, and office suite for all active employees."
+  },
+  {
+    id: "sub-supabase",
+    type: "subscription",
+    title: "Supabase Pro",
+    status: "Active",
+    owner: "Rohan Iyer",
+    updatedAt: today,
+    tags: ["subscription", "Cloud Hosting", "Active"],
+    fields: {
+      serviceName: "Supabase Pro",
+      vendor: "Supabase Inc.",
+      website: "https://supabase.com",
+      category: "Cloud Hosting",
+      description: "Managed Postgres database, authentication, and object storage buckets for app backends.",
+      billingCycle: "Monthly",
+      currency: "USD",
+      cost: 25,
+      tax: 0,
+      totalAmount: 25,
+      purchaseDate: "2024-08-12",
+      startDate: "2024-08-12",
+      renewalDate: "2026-08-12",
+      owner: "Rohan Iyer",
+      department: "Engineering",
+      paymentMethod: "Corporate Visa - 4821",
+      billingEmail: "engineering@enxt.ai",
+      autoRenewal: true,
+      status: "Active"
+    },
+    body: "Managed Postgres database, authentication, and object storage buckets for app backends."
+  }
+];
+
 export const brainDocuments: BrainDocument[] = [
   ...baseBrainDocuments.filter((document) => document.type !== "client" && document.type !== "lead"),
-  ...sheetLeadDocuments
+  ...sheetLeadDocuments,
+  ...initialMockSubscriptions
 ];
 
 export const getDocumentsByType = (type: BrainDocument["type"], documents = brainDocuments) =>

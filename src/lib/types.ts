@@ -1,4 +1,4 @@
-export type DocumentType = "employee" | "project" | "client" | "lead" | "system";
+export type DocumentType = "employee" | "project" | "client" | "lead" | "system" | "subscription";
 
 export type BrainField = string | number | string[];
 

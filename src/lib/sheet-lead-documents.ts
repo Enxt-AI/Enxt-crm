@@ -8,7 +8,8 @@ type SheetLead = {
   contactPerson: string;
   projectDetails: string;
   contractValue: string;
-  charge: string;
+  cess?: string;
+  charge?: string;
   paymentDue: string;
   paymentReceived: string;
   paymentRemarks: string;
@@ -90,6 +91,7 @@ export const sheetLeadDocuments: BrainDocument[] = leads.map((lead) => {
     tags: ["lead", stage, "sheet-import"],
     fields: {
       ...lead,
+      cess: lead.cess || lead.charge || "",
       stage,
       originalStage: lead.stage,
       owner: "Founder",
@@ -104,7 +106,7 @@ Company: ${lead.company}
 Contact: ${lead.contactPerson || "Not provided"}
 Project: ${lead.projectDetails || "Not provided"}
 Contract value: ${lead.contractValue || "Not provided"}
-Charge: ${lead.charge || "Not provided"}
+Cess: ${lead.cess || lead.charge || "Not provided"}
 Payment due: ${lead.paymentDue || "Not provided"}
 Payment received: ${lead.paymentReceived || "Not provided"}
 Contract signed status: ${lead.contractSignedStatus || "Not provided"}

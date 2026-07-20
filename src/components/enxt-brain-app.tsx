@@ -44,6 +44,7 @@ import EmployeeTasksView from "./EmployeeTasksView";
 import TaskAssignmentModal from "./TaskAssignmentModal";
 import ProjectDetailsView from "./ProjectDetailsView";
 import ProjectCalendarView from "./ProjectCalendarView";
+import SubscriptionsView from "./SubscriptionsView";
 
 // Finance view component
 import FinanceView from "./FinanceView";
@@ -51,10 +52,10 @@ import WhatsAppChatView from "./WhatsAppChatView";
 import StatusDashboardView from "./StatusDashboardView";
 
 
-import { brainDocuments } from "../lib/demo-documents";
+import { brainDocuments, initialMockSubscriptions } from "../lib/demo-documents";
 import type { BrainDocument, ChangeRequest, ChatMessage } from "../lib/types";
 
-type View = "dashboard" | "employees" | "projects" | "crm" | "documents" | "finance" | "tasks" | "whatsapp";
+type View = "dashboard" | "employees" | "projects" | "crm" | "documents" | "finance" | "tasks" | "whatsapp" | "subscriptions";
 type EmployeeEditState = Record<string, string>;
 type LeadEditState = Record<string, string>;
 type ViewedEmployeeDocument = {
@@ -70,6 +71,7 @@ const navItems: { id: View; label: string; icon: LucideIcon }[] = [
   { id: "employees", label: "Employees", icon: Users },
   { id: "projects", label: "Projects", icon: SquareKanban },
   { id: "crm", label: "CRM", icon: BriefcaseBusiness },
+  { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "documents", label: "Documents", icon: FileText },
   { id: "tasks", label: "Tasks", icon: ClipboardList },
   { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
@@ -213,7 +215,14 @@ export default function EnxtBrainApp() {
       })
       .then((data) => {
         if (data && Array.isArray(data) && data.length > 0) {
-          setDocuments(data);
+          const hasSubscriptions = data.some(d => d.type === "subscription");
+          if (!hasSubscriptions) {
+            const merged = [...data, ...initialMockSubscriptions];
+            setDocuments(merged);
+            console.log("[EnxtBrain] Bootstrapped with", initialMockSubscriptions.length, "mock subscriptions");
+          } else {
+            setDocuments(data);
+          }
           setLoadSuccess(true);
           setDbSyncStatus("saved");
           console.log("[EnxtBrain] Loaded", data.length, "documents from database");
@@ -661,6 +670,57 @@ export default function EnxtBrainApp() {
     showToast("Client deleted successfully", "success");
   };
 
+  const addSubscription = (fields: Record<string, any>) => {
+    setDocuments((current) => {
+      const newId = `sub-${fields.serviceName?.toLowerCase().replace(/\s+/g, "-") || Date.now()}`;
+      const today = new Date().toISOString().slice(0, 10);
+      const newSub: BrainDocument = {
+        id: newId,
+        type: "subscription",
+        title: fields.serviceName || "New Subscription",
+        status: fields.status || "Active",
+        owner: fields.owner || "Unassigned",
+        updatedAt: today,
+        tags: ["subscription", fields.category || "AI Tools", fields.status || "Active"],
+        fields: {
+          ...fields
+        },
+        body: fields.description || ""
+      };
+      return [...current, newSub];
+    });
+    showToast("Subscription added successfully", "success");
+  };
+
+  const updateSubscription = (subId: string, fields: Record<string, any>) => {
+    setDocuments((current) =>
+      current.map((document) => {
+        if (document.id !== subId) {
+          return document;
+        }
+        return {
+          ...document,
+          title: fields.serviceName || document.title,
+          status: fields.status || document.status,
+          owner: fields.owner || document.owner,
+          updatedAt: new Date().toISOString().slice(0, 10),
+          tags: ["subscription", fields.category || asText(document, "category"), fields.status || document.status],
+          fields: {
+            ...document.fields,
+            ...fields
+          },
+          body: fields.description !== undefined ? fields.description : document.body
+        };
+      })
+    );
+    showToast("Subscription updated successfully", "success");
+  };
+
+  const deleteSubscription = (subId: string) => {
+    setDocuments((current) => current.filter((document) => document.id !== subId));
+    showToast("Subscription deleted successfully", "success");
+  };
+
   const updateLead = (leadId: string, fields: LeadEditState) => {
     setDocuments((current) =>
       current.map((document) => {
@@ -825,17 +885,8 @@ export default function EnxtBrainApp() {
             })}
           </nav>
 
-          {/* Right: Search, Status Indicator Dot, and AI panel toggle */}
+          {/* Right: Status Indicator Dot, and AI panel toggle */}
           <div className="notch-actions">
-            <div className="notch-search">
-              <Search size={14} aria-hidden="true" />
-              <input
-                aria-label="Search memory"
-                onChange={(event) => setDocumentQuery(event.target.value)}
-                placeholder="Search..."
-                value={documentQuery}
-              />
-            </div>
 
             <div 
               className="sync-status-pill" 
@@ -1049,6 +1100,23 @@ export default function EnxtBrainApp() {
               <div className="h-[600px] w-full max-w-4xl mx-auto">
                 <WhatsAppChatView />
               </div>
+            )}
+
+            {activeView === "subscriptions" && (
+              <SubscriptionsView
+                subscriptions={documents.filter((d) => d.type === "subscription")}
+                employees={documents.filter((d) => d.type === "employee")}
+                onAddSubscription={addSubscription}
+                onUpdateSubscription={updateSubscription}
+                onDeleteSubscription={deleteSubscription}
+                onViewDocument={(doc) => setViewedDocument({
+                  employeeName: "Subscription Document",
+                  label: doc.label,
+                  status: "Active",
+                  value: "",
+                  url: doc.url
+                })}
+              />
             )}
           </div>
         </main>
@@ -3604,6 +3672,8 @@ function getViewTitle(view: View) {
       return "AI Project Docs";
     case "crm":
       return "CRM Pipeline";
+    case "subscriptions":
+      return "SaaS & Subscriptions";
     case "documents":
       return "Document Store";
     case "tasks":
