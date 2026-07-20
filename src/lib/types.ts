@@ -1,6 +1,6 @@
 export type DocumentType = "employee" | "project" | "client" | "lead" | "system" | "subscription";
 
-export type BrainField = string | number | string[];
+export type BrainField = string | number | boolean | string[];
 
 export type BrainDocument = {
   id: string;
