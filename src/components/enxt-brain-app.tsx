@@ -3189,8 +3189,7 @@ function CrmView({
           setShowProjectCalendar(false);
         }}
         onEditLead={(leadDoc) => {
-          setEditingLeadId(leadDoc.id);
-          setLeadEditFields(leadDoc.fields);
+          startLeadEdit(leadDoc);
           setShowProjectCalendar(false);
         }}
         onClose={() => setShowProjectCalendar(false)}
