@@ -1686,8 +1686,8 @@ function EmployeesView({
                 </select>
               </label>
               <EditableField label="Salary" value={editFields.currentSalaryRaw} onChange={(value) => updateField("currentSalaryRaw", value)} />
-              <EditableField label="Date of Joining" value={editFields.dateOfJoining} onChange={(value) => updateField("dateOfJoining", value)} />
-              <EditableField label="Date of Leaving" value={editFields.dateOfLeaving} onChange={(value) => updateField("dateOfLeaving", value)} />
+              <EditableField type="date" label="Date of Joining" value={editFields.dateOfJoining} onChange={(value) => updateField("dateOfJoining", value)} />
+              <EditableField type="date" label="Date of Leaving" value={editFields.dateOfLeaving} onChange={(value) => updateField("dateOfLeaving", value)} />
               <EditableField label="Offer Letter" value={editFields.offerLetter} onChange={(value) => updateField("offerLetter", value)} />
               <EditableField label="Offer Letter URL" value={editFields.offerLetterUrl} onChange={(value) => updateField("offerLetterUrl", value)} />
               <EditableField label="PAN Card" value={editFields.panCard} onChange={(value) => updateField("panCard", value)} />
@@ -1780,12 +1780,14 @@ export function EditableField({
   label,
   value,
   onChange,
-  protectedValue = false
+  protectedValue = false,
+  type = "text"
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   protectedValue?: boolean;
+  type?: string;
 }) {
   return (
     <label className="field-control">
@@ -1793,7 +1795,7 @@ export function EditableField({
       <input
         onChange={(event) => onChange(event.target.value)}
         placeholder={protectedValue ? "Protected field" : ""}
-        type="text"
+        type={type}
         value={value ?? ""}
       />
     </label>
@@ -2531,7 +2533,7 @@ function ProjectAddModal({
             </select>
           </label>
 
-          <EditableField label="Due Date" value={fields.dueDate} onChange={(value) => updateField("dueDate", value)} />
+          <EditableField type="date" label="Due Date" value={fields.dueDate} onChange={(value) => updateField("dueDate", value)} />
           <EditableField label="Budget (INR)" value={fields.budgetInr} onChange={(value) => updateField("budgetInr", value)} />
           <EditableField label="Progress (0-100)" value={fields.progress} onChange={(value) => updateField("progress", value)} />
           
@@ -2651,7 +2653,7 @@ function ProjectEditModal({
             </select>
           </label>
 
-          <EditableField label="Due Date" value={fields.dueDate} onChange={(value) => updateField("dueDate", value)} />
+          <EditableField type="date" label="Due Date" value={fields.dueDate} onChange={(value) => updateField("dueDate", value)} />
           <EditableField label="Budget (INR)" value={fields.budgetInr} onChange={(value) => updateField("budgetInr", value)} />
           <EditableField label="Progress (0-100)" value={fields.progress} onChange={(value) => updateField("progress", value)} />
           
@@ -3316,8 +3318,8 @@ function CrmView({ leads, onUpdateLead, onAddLead, onDeleteLead }: { leads: Brai
               <EditableField label="Contract Signed Status" value={leadEditFields.contractSignedStatus} onChange={(value) => updateLeadField("contractSignedStatus", value)} />
               <EditableField label="Communication Status" value={leadEditFields.communicationStatus} onChange={(value) => updateLeadField("communicationStatus", value)} />
               <EditableField label="Next Steps" value={leadEditFields.nextSteps} onChange={(value) => updateLeadField("nextSteps", value)} />
-              <EditableField label="Deadline" value={leadEditFields.deadline} onChange={(value) => updateLeadField("deadline", value)} />
-              <EditableField label="Last Communication" value={leadEditFields.lastCommunicationDate} onChange={(value) => updateLeadField("lastCommunicationDate", value)} />
+              <EditableField type="date" label="Deadline" value={leadEditFields.deadline} onChange={(value) => updateLeadField("deadline", value)} />
+              <EditableField type="date" label="Last Communication" value={leadEditFields.lastCommunicationDate} onChange={(value) => updateLeadField("lastCommunicationDate", value)} />
             </div>
             <div className="editor-footer">
               <span>Saved edits persist in this browser and update the lead pipeline immediately.</span>
