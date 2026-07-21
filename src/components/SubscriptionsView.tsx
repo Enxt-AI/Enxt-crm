@@ -482,6 +482,180 @@ export default function SubscriptionsView({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%", height: "100%" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* Custom styles for Subscriptions view responsiveness */
+        .subscriptions-dashboard-grid {
+          display: grid;
+          grid-template-columns: 1fr 340px;
+          gap: 20px;
+        }
+        .subscriptions-tabs-container {
+          display: flex;
+          gap: 6px;
+          background: rgba(0, 0, 0, 0.03);
+          padding: 4px;
+          border-radius: 10px;
+          width: fit-content;
+          max-width: 100%;
+          border: 1px solid var(--line);
+          overflow-x: auto;
+          white-space: nowrap;
+          -webkit-overflow-scrolling: touch;
+        }
+        .subscriptions-tabs-container::-webkit-scrollbar {
+          display: none;
+        }
+        .subscriptions-filter-bar {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+          width: 100%;
+        }
+        .subscriptions-table-container {
+          overflow-x: auto;
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          background: white;
+          width: 100%;
+        }
+        .subscriptions-table {
+          width: 100%;
+          border-collapse: collapse;
+          text-align: left;
+          font-size: 0.82rem;
+          min-width: 800px;
+        }
+        .subscriptions-calendar-month-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 1px;
+          background: var(--line);
+          border-radius: 8px;
+          overflow: hidden;
+          width: 100%;
+        }
+        .subscriptions-calendar-day-cell {
+          background: white;
+          min-height: 100px;
+          padding: 8px;
+          border: 1px solid rgba(0, 0, 0, 0.02);
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .subscriptions-calendar-week-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 10px;
+          width: 100%;
+        }
+        .subscriptions-analytics-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+        .subscriptions-donut-box {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+          min-height: 220px;
+        }
+        .subscriptions-form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          max-height: 400px;
+          overflow-y: auto;
+          padding: 20px;
+        }
+        .side-drawer-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.4);
+          z-index: 1000;
+          display: flex;
+          justify-content: flex-end;
+          align-items: stretch;
+        }
+        .side-drawer-panel {
+          background: white;
+          width: 460px;
+          max-width: 100%;
+          height: 100%;
+          box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+          display: flex;
+          flex-direction: column;
+          z-index: 1001;
+        }
+        
+        @media (max-width: 950px) {
+          .subscriptions-dashboard-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 900px) {
+          .subscriptions-calendar-week-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+        @media (max-width: 800px) {
+          .subscriptions-analytics-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 768px) {
+          .subscriptions-filter-bar > * {
+            flex-grow: 1;
+            width: 100%;
+          }
+          .subscriptions-filter-bar .notch-search {
+            max-width: 100% !important;
+          }
+          .subscriptions-calendar-day-cell {
+            min-height: 60px !important;
+            padding: 4px !important;
+          }
+          .subscriptions-calendar-day-cell span {
+            font-size: 0.65rem !important;
+          }
+          .subscriptions-calendar-event-pill {
+            padding: 2px 4px !important;
+            font-size: 0.6rem !important;
+          }
+          .subscriptions-donut-box {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+        }
+        @media (max-width: 600px) {
+          .subscriptions-calendar-week-grid {
+            grid-template-columns: 1fr;
+          }
+          .side-drawer-backdrop {
+            align-items: flex-end;
+          }
+          .side-drawer-panel {
+            width: 100%;
+            height: 85%;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+          }
+          .subscriptions-form-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+            padding: 14px !important;
+          }
+          .employee-edit-modal {
+            width: 95% !important;
+            margin: 10px !important;
+            max-height: 90vh !important;
+          }
+        }
+      `}} />
       
       {/* HEADER SECTION */}
       <header className="employee-title-block" style={{ marginBottom: "0px" }}>
@@ -533,7 +707,7 @@ export default function SubscriptionsView({
       </section>
 
       {/* TABS SELECTOR */}
-      <div style={{ display: "flex", gap: "6px", background: "rgba(0, 0, 0, 0.03)", padding: "4px", borderRadius: "10px", width: "fit-content", border: "1px solid var(--line)" }}>
+      <div className="subscriptions-tabs-container">
         <button 
           onClick={() => setActiveTab("dashboard")} 
           className="text-button"
@@ -570,7 +744,7 @@ export default function SubscriptionsView({
 
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
+        <div className="subscriptions-dashboard-grid">
           
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             
@@ -722,7 +896,7 @@ export default function SubscriptionsView({
         <div className="panel" style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "16px 20px" }}>
           
           {/* SEARCH & FILTERS BAR */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+          <div className="subscriptions-filter-bar">
             <div className="notch-search" style={{ margin: 0, flexGrow: 1, minWidth: "200px", border: "1px solid var(--line)" }}>
               <Search size={14} />
               <input 
@@ -755,8 +929,8 @@ export default function SubscriptionsView({
           </div>
 
           {/* TABLE CONTAINER */}
-          <div style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: "8px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.82rem" }}>
+          <div className="subscriptions-table-container">
+            <table className="subscriptions-table">
               <thead>
                 <tr style={{ background: "rgba(0, 0, 0, 0.02)", borderBottom: "1px solid var(--line)", color: "var(--muted)", fontWeight: 600 }}>
                   <th style={{ padding: "12px 14px" }}>Tool / Service</th>
@@ -863,7 +1037,7 @@ export default function SubscriptionsView({
           {/* Month grid */}
           {calViewMode === "month" ? (
             <div className="panel" style={{ padding: "16px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px", background: "var(--line)", borderRadius: "8px", overflow: "hidden" }}>
+              <div className="subscriptions-calendar-month-grid">
                 {/* Headers */}
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(h => (
                   <div key={h} style={{ background: "rgba(0, 0, 0, 0.02)", padding: "10px", textAlign: "center", fontWeight: 700, fontSize: "0.75rem", color: "var(--muted)" }}>{h}</div>
@@ -876,7 +1050,11 @@ export default function SubscriptionsView({
                   const isToday = dateStr === new Date().toISOString().slice(0, 10);
                   
                   return (
-                    <div key={idx} style={{ background: isToday ? "rgba(22, 120, 79, 0.03)" : day.isCurrentMonth ? "white" : "#fafafa", minHeight: "100px", padding: "8px", border: "1px solid rgba(0, 0, 0, 0.02)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div 
+                      key={idx} 
+                      className="subscriptions-calendar-day-cell"
+                      style={{ background: isToday ? "rgba(22, 120, 79, 0.03)" : day.isCurrentMonth ? "white" : "#fafafa" }}
+                    >
                       <span style={{ fontSize: "0.75rem", fontWeight: 700, color: isToday ? "var(--green)" : day.isCurrentMonth ? "var(--ink)" : "var(--muted)" }}>
                         {day.date.getDate()}
                       </span>
@@ -888,6 +1066,7 @@ export default function SubscriptionsView({
                             <div 
                               key={s.id} 
                               onClick={() => setSelectedSub(s)}
+                              className="subscriptions-calendar-event-pill"
                               style={{ padding: "2px 6px", borderRadius: "4px", background: iconConfig.bg, color: iconConfig.color, borderLeft: `2.5px solid ${iconConfig.color}`, fontSize: "0.68rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer" }}
                               title={s.title || asText(s, "serviceName")}
                             >
@@ -904,7 +1083,7 @@ export default function SubscriptionsView({
           ) : (
             // Week grid
             <div className="panel" style={{ padding: "16px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "10px" }}>
+              <div className="subscriptions-calendar-week-grid">
                 {weekDays.map((day) => {
                   const dateStr = day.dateStr;
                   const matches = subscriptions.filter(s => parseToISODate(asText(s, "renewalDate")) === dateStr);
@@ -945,7 +1124,7 @@ export default function SubscriptionsView({
 
       {/* COST ANALYTICS TAB */}
       {activeTab === "analytics" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        <div className="subscriptions-analytics-grid">
           
           {/* Category costs donut */}
           <div className="panel" style={{ padding: "20px" }}>
@@ -956,7 +1135,7 @@ export default function SubscriptionsView({
               </div>
             </div>
             
-            <div style={{ display: "flex", gap: "16px", alignItems: "center", minHeight: "220px" }}>
+            <div className="subscriptions-donut-box">
               {/* SVG Donut */}
               <div style={{ position: "relative", width: "160px", height: "160px" }}>
                 <svg width="100%" height="100%" viewBox="0 0 42 42" style={{ transform: "rotate(-90deg)" }}>
@@ -1170,7 +1349,7 @@ export default function SubscriptionsView({
             </div>
 
             <form onSubmit={handleFormSave}>
-              <div className="employee-edit-grid" style={{ gridTemplateColumns: "1fr 1fr", maxHeight: "400px", overflowY: "auto", padding: "20px" }}>
+              <div className="subscriptions-form-grid">
                 
                 {/* Basic Info */}
                 <label className="field-control">
