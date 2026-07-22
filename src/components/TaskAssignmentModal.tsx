@@ -174,7 +174,7 @@ export default function TaskAssignmentModal({
             const wRes = await fetch('/api/whatsapp/send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ to: phone, body: message }),
+              body: JSON.stringify({ to: phone, body: message, notifyAdmins: true }),
             });
             if (wRes.ok) notifSent++; else notifFailed++;
           } catch { notifFailed++; }

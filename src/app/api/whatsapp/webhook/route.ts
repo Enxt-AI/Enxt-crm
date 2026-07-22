@@ -327,9 +327,9 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
     console.log(`[whatsapp webhook bg-worker] Matched employee: ${employeeName}`);
 
     // Filter tasks for this employee from the pre-fetched parallel query
-    const employeeTasks = allTasks.filter((t: any) => 
-      (t.assigned_employee_ids || []).includes(employee.id)
-    );
+    const employeeTasks = employee
+      ? allTasks.filter((t: any) => (t.assigned_employee_ids || []).includes(employee.id))
+      : [];
 
     const lowerText = textBody.toLowerCase();
     const isExtensionRequestText = /\b(extend|extension|time\s*change|delay|more\s*time|extra\s*time|hours|days)\b/i.test(lowerText);
@@ -598,7 +598,7 @@ Your Guidelines:
                     id: `tcr-${Date.now()}`,
                     taskId: matchedTask.id,
                     taskTitle: matchedTask.title,
-                    employeeId: employee.id,
+                    employeeId: employee?.id || '',
                     employeeName: employeeName,
                     requestedDueDate: dueDate,
                     requestedDueTime: dueTime,

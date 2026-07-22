@@ -1,9 +1,40 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
+async function sendMetaMessage(to: string, body: string, whatsappToken: string, phoneId: string) {
+  if (!whatsappToken || !phoneId || whatsappToken.includes('your_meta_access_token')) {
+    console.log(`[whatsapp admin copy] Simulated admin notification to ${to}:\n${body}`);
+    return { simulated: true };
+  }
+  const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${whatsappToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: to,
+        type: 'text',
+        text: {
+          preview_url: false,
+          body: body,
+        },
+      }),
+    });
+    return { ok: res.ok, status: res.status };
+  } catch (err) {
+    console.error(`[whatsapp admin copy] Failed to send to ${to}:`, err);
+    return { ok: false, error: err };
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const { to, body, template } = await request.json();
+    const { to, body, template, notifyAdmins } = await request.json();
     if (!to || !body) {
       return NextResponse.json({ error: 'Missing "to" or "body"' }, { status: 400 });
     }
@@ -73,6 +104,28 @@ export async function POST(request: Request) {
           .upsert({ key: 'whatsapp_messages', data: messages });
       } catch (err) {
         console.error("[whatsapp send api] Failed to save outbound message to Supabase:", err);
+      }
+    };
+
+    const triggerAdminAlertIfRequested = async () => {
+      try {
+        if (!notifyAdmins) return;
+        const adminNumbers = (process.env.ADMIN_PHONE_NUMBERS || '')
+          .split(',')
+          .map((num) => {
+            const digits = num.replace(/\D/g, '').trim();
+            return digits.length === 10 ? `91${digits}` : digits;
+          })
+          .filter(Boolean);
+
+        const adminAlertBody = `📢 *[Admin Copy]* Task assigned to *${employeeName}*:\n\n${body.replace(/Hi .*?!\n\n/, '')}`;
+
+        for (const adminTo of adminNumbers) {
+          if (adminTo === formattedTo) continue;
+          await sendMetaMessage(adminTo, adminAlertBody, whatsappToken, phoneId);
+        }
+      } catch (err) {
+        console.error("[whatsapp send api] Failed to send admin alert copy:", err);
       }
     };
 
@@ -147,9 +200,12 @@ export async function POST(request: Request) {
       const data = await res.json();
       console.log('[whatsapp send api] Meta response:', data);
 
-      if (!res.ok) {
+       if (!res.ok) {
         return NextResponse.json({ error: `Meta API error: ${res.status} ${JSON.stringify(data)}` }, { status: 500 });
       }
+
+      // Dispatch admin copies if requested
+      await triggerAdminAlertIfRequested();
 
       // Log outbound message to database
       await logMessageToDB();
@@ -163,6 +219,9 @@ export async function POST(request: Request) {
     console.log(`To: ${formattedTo}`);
     console.log(`Body:\n${body}`);
     console.log('-----------------------------------------');
+
+    // Dispatch admin copies if requested
+    await triggerAdminAlertIfRequested();
 
     // Still log simulated messages so they appear in UI during local dev
     await logMessageToDB();
