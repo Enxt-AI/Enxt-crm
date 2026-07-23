@@ -79,7 +79,7 @@ export async function GET(request: Request) {
           type: 'template',
           template: {
             name: 'team_broadcast',
-            language: { code: 'en' },
+            language: { code: 'en_US' },
             components: [
               {
                 type: 'body',
