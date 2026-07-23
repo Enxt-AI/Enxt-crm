@@ -138,6 +138,18 @@ async function processWebhookPayload(payload: any) {
     const entry = payload.entry?.[0];
     const change = entry?.changes?.[0];
     const value = change?.value;
+    
+    // Log status updates (sent, delivered, failed) to Supabase for debugging
+    const statuses = value?.statuses;
+    if (statuses && statuses.length > 0) {
+      console.log('[whatsapp webhook bg-worker] Status update received:', JSON.stringify(statuses));
+      await logDiagnostic({
+        event: 'status_update',
+        statuses
+      });
+      return;
+    }
+
     const message = value?.messages?.[0];
 
     if (!message) {
