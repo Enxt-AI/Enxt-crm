@@ -95,6 +95,13 @@ function parseToISODate(dateStr: string): string | null {
   return null;
 }
 
+function getLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 interface ProjectCalendarViewProps {
   projects: BrainDocument[];
   leads: BrainDocument[];
@@ -139,7 +146,7 @@ export default function ProjectCalendarView({
     projectId: "",
     type: "meeting", // meeting, milestone, deadline, reminder
     title: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: getLocalDateString(new Date()),
     time: "10:00",
     summary: ""
   });
@@ -312,7 +319,7 @@ export default function ProjectCalendarView({
 
   // 3. KPI METRICS CARDS DATA
   const kpiData = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateString(new Date());
     const activeProjectsCount = projects.filter((p) => asText(p, "phase") !== "Completed").length;
     const activeLeadsCount = leads.filter((l) => asText(l, "stage") === "Project Started" || asText(l, "stage") === "Proposal").length;
     
@@ -322,7 +329,7 @@ export default function ProjectCalendarView({
     // Upcoming Deadlines (Next 7 days)
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
-    const nextWeekStr = nextWeek.toISOString().slice(0, 10);
+    const nextWeekStr = getLocalDateString(nextWeek);
     
     const upcomingProjDeadlines = projects.filter((p) => {
       const due = parseToISODate(asText(p, "dueDate"));
@@ -346,7 +353,7 @@ export default function ProjectCalendarView({
     }).length;
 
     // Completing this month
-    const currentMonthPrefix = currentDate.toISOString().slice(0, 7); // YYYY-MM
+    const currentMonthPrefix = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
     const completingProjThisMonth = projects.filter((p) => {
       const due = parseToISODate(asText(p, "dueDate"));
       return due && due.startsWith(currentMonthPrefix);
@@ -384,7 +391,7 @@ export default function ProjectCalendarView({
       const d = new Date(year, month - 1, prevMonthEnd - i);
       days.push({
         date: d,
-        dateStr: d.toISOString().slice(0, 10),
+        dateStr: getLocalDateString(d),
         isCurrentMonth: false
       });
     }
@@ -394,7 +401,7 @@ export default function ProjectCalendarView({
       const d = new Date(year, month, i);
       days.push({
         date: d,
-        dateStr: d.toISOString().slice(0, 10),
+        dateStr: getLocalDateString(d),
         isCurrentMonth: true
       });
     }
@@ -406,7 +413,7 @@ export default function ProjectCalendarView({
       const d = new Date(year, month + 1, i);
       days.push({
         date: d,
-        dateStr: d.toISOString().slice(0, 10),
+        dateStr: getLocalDateString(d),
         isCurrentMonth: false
       });
     }
@@ -426,7 +433,7 @@ export default function ProjectCalendarView({
       d.setDate(sunday.getDate() + i);
       days.push({
         date: d,
-        dateStr: d.toISOString().slice(0, 10)
+        dateStr: getLocalDateString(d)
       });
     }
     return days;
@@ -838,7 +845,7 @@ export default function ProjectCalendarView({
                 {/* Day Cells */}
                 {calendarDays.map((day, idx) => {
                   const dayEvents = filteredEvents.filter((e) => e.date === day.dateStr);
-                  const isToday = day.dateStr === new Date().toISOString().slice(0, 10);
+                  const isToday = day.dateStr === getLocalDateString(new Date());
                   
                   return (
                     <div
@@ -893,7 +900,7 @@ export default function ProjectCalendarView({
                 {/* Columns representing days */}
                 {weekDays.map((day) => {
                   const dayEvents = filteredEvents.filter((e) => e.date === day.dateStr);
-                  const isToday = day.dateStr === new Date().toISOString().slice(0, 10);
+                  const isToday = day.dateStr === getLocalDateString(new Date());
                   
                   return (
                     <div 
