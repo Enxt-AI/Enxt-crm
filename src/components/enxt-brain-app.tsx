@@ -1522,7 +1522,12 @@ function EmployeesView({
       const response = await fetch("/api/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, message })
+        body: JSON.stringify({
+          phone,
+          message,
+          templateName: "team_broadcast",
+          templateParams: [name, message],
+        })
       });
 
       const data = await response.json();
@@ -1577,7 +1582,12 @@ function EmployeesView({
         const response = await fetch("/api/whatsapp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, message })
+          body: JSON.stringify({
+            phone,
+            message,
+            templateName: "team_broadcast",
+            templateParams: [name, message],
+          })
         });
         if (response.ok) sentCount++;
       } catch (e) {

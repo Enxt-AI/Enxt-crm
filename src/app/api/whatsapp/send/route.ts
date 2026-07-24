@@ -150,7 +150,7 @@ export async function POST(request: Request) {
             type: 'template',
             template: {
               name: template.name,
-              language: { code: template.language || 'en' },
+              language: { code: template.language || 'en_US' },
               components: [
                 {
                   type: 'body',
