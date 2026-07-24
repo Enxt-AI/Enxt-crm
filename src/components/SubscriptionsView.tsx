@@ -1263,8 +1263,8 @@ export default function SubscriptionsView({
                     <strong style={{ color: status === "Active" ? "var(--green)" : "var(--amber)" }}>{status}</strong>
                   </div>
                   <div className="drawer-metric">
-                    <span>Auto-Renew</span>
-                    <strong>{asBool(selectedSub, "autoRenewal") ? "Yes" : "No"}</strong>
+                    <span>Billing Cycle</span>
+                    <strong>{asText(selectedSub, "billingCycle") || "Monthly"}</strong>
                   </div>
                 </div>
 
@@ -1443,11 +1443,6 @@ export default function SubscriptionsView({
                   <select value={formFields.status} onChange={(e) => setFormFields({ ...formFields, status: e.target.value })}>
                     {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
-                </label>
-
-                <label className="field-control" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "8px", marginTop: "14px" }}>
-                  <input type="checkbox" checked={formFields.autoRenewal} onChange={(e) => setFormFields({ ...formFields, autoRenewal: e.target.checked })} style={{ width: "16px", height: "16px" }} />
-                  <span>Auto Renewal Enabled</span>
                 </label>
 
                 <label className="field-control" style={{ gridColumn: "span 2" }}>
