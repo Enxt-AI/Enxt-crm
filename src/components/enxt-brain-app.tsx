@@ -463,6 +463,12 @@ export default function EnxtBrainApp() {
   };
 
   const updateEmployee = (employeeId: string, fields: EmployeeEditState) => {
+    // Detect phone number change BEFORE updating state
+    const existingDoc = documents.find(d => d.id === employeeId);
+    const oldPhone = (existingDoc?.fields?.phone as string) || "";
+    const newPhone = (fields.phone || "").trim();
+    const phoneChanged = newPhone && newPhone !== oldPhone;
+
     setDocuments((current) =>
       current.map((document) => {
         if (document.id !== employeeId) {
@@ -508,6 +514,31 @@ export default function EnxtBrainApp() {
         };
       })
     );
+
+    // Auto-send welcome WhatsApp message ONLY when phone number is added/changed
+    if (phoneChanged) {
+      const employeeName = fields.name || (existingDoc?.fields?.name as string) || "Team Member";
+      const welcomeMessage = `Welcome to Enxt! 🎉 You have been added to the Enxt Brain portal. You can now receive task updates, reminders, and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
+      fetch("/api/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: newPhone,
+          message: welcomeMessage,
+          templateName: "team_broadcast",
+          templateParams: [employeeName, welcomeMessage]
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log(`[EnxtBrain] ✅ Welcome message sent to ${employeeName} (${newPhone}) — phone updated`);
+          } else {
+            console.warn(`[EnxtBrain] ⚠️ Welcome message failed for ${employeeName}:`, data);
+          }
+        })
+        .catch(err => console.error(`[EnxtBrain] ❌ Error sending welcome message to ${employeeName}:`, err));
+    }
   };
 
   const updateProject = (projectId: string, fields: Record<string, string>) => {
