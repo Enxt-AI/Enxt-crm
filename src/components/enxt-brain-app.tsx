@@ -586,6 +586,9 @@ export default function EnxtBrainApp() {
   };
 
   const addEmployee = (fields: EmployeeEditState) => {
+    const employeeName = fields.name || "New Employee";
+    const employeePhone = fields.phone || "";
+
     setDocuments((current) => {
       const monthlySalaryInr = salaryInputToNumber(fields.currentSalaryRaw);
       const newId = `emp-${fields.name?.toLowerCase().replace(/\s+/g, "-") || Date.now()}`;
@@ -593,14 +596,14 @@ export default function EnxtBrainApp() {
       const newEmployee: BrainDocument = {
         id: newId,
         type: "employee",
-        title: `${fields.name || "New Employee"} - Active Employee`,
+        title: `${employeeName} - Active Employee`,
         status: "Active",
         owner: "Founder Office",
         updatedAt: new Date().toISOString().slice(0, 10),
         tags: ["employee", "Active", "portal-editable"],
         fields: {
           serialNo: `${current.filter(d => d.type === "employee").length + 1}`,
-          name: fields.name || "",
+          name: employeeName,
           role: "Team Member",
           department: "Enxt AI",
           monthlySalaryInr,
@@ -627,6 +630,30 @@ export default function EnxtBrainApp() {
       
       return [...current, newEmployee];
     });
+
+    // Auto-send welcome WhatsApp message to the new employee
+    if (employeePhone) {
+      const welcomeMessage = `Welcome to Enxt! 🎉 You have been added to the Enxt Brain portal. You can now receive task updates, reminders, and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
+      fetch("/api/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: employeePhone,
+          message: welcomeMessage,
+          templateName: "team_broadcast",
+          templateParams: [employeeName, welcomeMessage]
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log(`[EnxtBrain] ✅ Welcome message sent to ${employeeName} (${employeePhone})`);
+          } else {
+            console.warn(`[EnxtBrain] ⚠️ Welcome message failed for ${employeeName}:`, data);
+          }
+        })
+        .catch(err => console.error(`[EnxtBrain] ❌ Error sending welcome message to ${employeeName}:`, err));
+    }
   };
 
   const addLead = (fields: LeadEditState) => {
