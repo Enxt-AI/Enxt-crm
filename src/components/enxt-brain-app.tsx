@@ -215,14 +215,7 @@ export default function EnxtBrainApp() {
       })
       .then((data) => {
         if (data && Array.isArray(data) && data.length > 0) {
-          const hasSubscriptions = data.some(d => d.type === "subscription");
-          if (!hasSubscriptions) {
-            const merged = [...data, ...initialMockSubscriptions];
-            setDocuments(merged);
-            console.log("[EnxtBrain] Bootstrapped with", initialMockSubscriptions.length, "mock subscriptions");
-          } else {
-            setDocuments(data);
-          }
+          setDocuments(data);
           setLoadSuccess(true);
           setDbSyncStatus("saved");
           console.log("[EnxtBrain] Loaded", data.length, "documents from database");
