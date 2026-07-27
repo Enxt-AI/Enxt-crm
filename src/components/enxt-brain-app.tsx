@@ -515,26 +515,28 @@ export default function EnxtBrainApp() {
       })
     );
 
-    // Auto-send welcome WhatsApp message ONLY when phone number is added/changed
+    // Auto-send welcome WhatsApp message ONLY when phone number is added/changed (via Gemini AI)
     if (phoneChanged) {
       const employeeName = fields.name || (existingDoc?.fields?.name as string) || "Team Member";
-      const welcomeMessage = `Welcome to Enxt! 🎉 You have been added to the Enxt Brain portal. You can now receive task updates, reminders, and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
+      const welcomeFallback = `Welcome to Enxt! 🎉 Your phone number has been updated on the Enxt Brain portal. You can now receive task updates and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
       fetch("/api/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: newPhone,
-          message: welcomeMessage,
+          employeeName: employeeName,
+          useGemini: true,
+          message: welcomeFallback,
           templateName: "team_broadcast",
-          templateParams: [employeeName, welcomeMessage]
+          templateParams: [employeeName, welcomeFallback]
         })
       })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            console.log(`[EnxtBrain] ✅ Welcome message sent to ${employeeName} (${newPhone}) — phone updated`);
+            console.log(`[EnxtBrain] ✅ Gemini welcome message sent to ${employeeName} (${newPhone}) — phone updated`);
           } else {
-            console.warn(`[EnxtBrain] ⚠️ Welcome message failed for ${employeeName}:`, data);
+            console.warn(`[EnxtBrain] ⚠️ Gemini welcome message failed for ${employeeName}:`, data);
           }
         })
         .catch(err => console.error(`[EnxtBrain] ❌ Error sending welcome message to ${employeeName}:`, err));
@@ -662,25 +664,27 @@ export default function EnxtBrainApp() {
       return [...current, newEmployee];
     });
 
-    // Auto-send welcome WhatsApp message to the new employee
+    // Auto-send welcome WhatsApp message to the new employee via Gemini AI
     if (employeePhone) {
-      const welcomeMessage = `Welcome to Enxt! 🎉 You have been added to the Enxt Brain portal. You can now receive task updates, reminders, and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
+      const welcomeFallback = `Welcome to Enxt! 🎉 You have been added to the Enxt Brain portal. You can now receive task updates, reminders, and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
       fetch("/api/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: employeePhone,
-          message: welcomeMessage,
+          employeeName: employeeName,
+          useGemini: true,
+          message: welcomeFallback,
           templateName: "team_broadcast",
-          templateParams: [employeeName, welcomeMessage]
+          templateParams: [employeeName, welcomeFallback]
         })
       })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            console.log(`[EnxtBrain] ✅ Welcome message sent to ${employeeName} (${employeePhone})`);
+            console.log(`[EnxtBrain] ✅ Gemini welcome message sent to ${employeeName} (${employeePhone})`);
           } else {
-            console.warn(`[EnxtBrain] ⚠️ Welcome message failed for ${employeeName}:`, data);
+            console.warn(`[EnxtBrain] ⚠️ Gemini welcome message failed for ${employeeName}:`, data);
           }
         })
         .catch(err => console.error(`[EnxtBrain] ❌ Error sending welcome message to ${employeeName}:`, err));

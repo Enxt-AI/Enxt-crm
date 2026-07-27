@@ -2,10 +2,67 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const { phone, message, templateName, templateParams } = await request.json();
+    const { phone, message, templateName, templateParams, useGemini, employeeName } = await request.json();
 
     if (!phone) {
       return NextResponse.json({ error: "Phone is required" }, { status: 400 });
+    }
+
+    let finalMessage = message;
+    let finalParams = templateParams;
+
+    // Generate custom welcome message via Gemini API if requested
+    if (useGemini && employeeName) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        try {
+          const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+          const prompt = `You are Enxt Brain, the AI assistant for Enxt AI.
+Write an enthusiastic, warm, single-line WhatsApp welcome message for team member "${employeeName}".
+Mention that they are set up on the Enxt Brain portal and can reply with "Hi" anytime to view assigned tasks, update project status, or chat with the AI.
+Include friendly emojis. CRITICAL: Keep your entire output on ONE SINGLE LINE without any line breaks or newlines.`;
+
+          const gRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "x-goog-api-key": apiKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                system_instruction: {
+                  parts: [
+                    {
+                      text: "You are Enxt Brain AI assistant. Generate concise, single-line WhatsApp welcome messages for team members."
+                    }
+                  ]
+                },
+                contents: [
+                  {
+                    role: "user",
+                    parts: [{ text: prompt }]
+                  }
+                ]
+              })
+            }
+          );
+
+          const gData = await gRes.json();
+          const generatedText = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+          if (generatedText) {
+            const cleanText = generatedText.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+            console.log(`[whatsapp global api] Gemini generated welcome message for ${employeeName}: "${cleanText}"`);
+            finalMessage = cleanText;
+            if (templateName && templateParams?.length) {
+              finalParams = [employeeName, cleanText];
+            }
+          }
+        } catch (err) {
+          console.warn("[whatsapp global api] Gemini generation error, using fallback message:", err);
+        }
+      }
     }
 
     const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
@@ -27,8 +84,15 @@ export async function POST(request: Request) {
       const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
 
       // 1a. Try template message first (works outside 24-hour window)
-      if (templateName && templateParams?.length) {
+      if (templateName && finalParams?.length) {
         console.log(`[whatsapp global api] Trying template "${templateName}" to:`, formattedTo);
+
+        const sanitizedParams = finalParams.map((p: string) => 
+          (typeof p === "string" ? p : String(p || ""))
+            .replace(/[\r\n]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+        );
 
         const tRes = await fetch(url, {
           method: "POST",
@@ -46,7 +110,7 @@ export async function POST(request: Request) {
               language: { code: "en_US" },
               components: [{
                 type: "body",
-                parameters: templateParams.map((p: string) => ({ type: "text", text: p })),
+                parameters: sanitizedParams.map((p: string) => ({ type: "text", text: p })),
               }],
             },
           }),
@@ -73,7 +137,7 @@ export async function POST(request: Request) {
         type: "text",
         text: {
           preview_url: false,
-          body: message || "",
+          body: finalMessage || "",
         },
       };
 

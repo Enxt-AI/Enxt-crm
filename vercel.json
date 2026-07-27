@@ -1,8 +1,20 @@
 {
   "crons": [
     {
+      "path": "/api/status-requests/send?schedule=morning",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/status-requests/send?schedule=midday",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/status-requests/send?schedule=evening",
+      "schedule": "30 12 * * *"
+    },
+    {
       "path": "/api/cron/reminders",
-      "schedule": "0 4 * * *"
+      "schedule": "0 4,8,13 * * *"
     }
   ]
 }

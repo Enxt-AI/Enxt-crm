@@ -154,9 +154,12 @@ export async function POST(request: Request) {
               components: [
                 {
                   type: 'body',
-                  parameters: template.parameters.map((p: string) => ({
+                  parameters: (template.parameters || []).map((p: string) => ({
                     type: 'text',
-                    text: p,
+                    text: (typeof p === 'string' ? p : String(p || ''))
+                      .replace(/[\r\n]+/g, ' ')
+                      .replace(/\s+/g, ' ')
+                      .trim(),
                   })),
                 },
               ],

@@ -159,8 +159,8 @@ export async function GET(request: Request) {
             to: empPhone,
             body: message,
             template: {
-              name: 'daily_status_update',
-              parameters: [greeting, empName, project],
+              name: 'team_broadcast',
+              parameters: [empName, message],
             },
           }),
         });
