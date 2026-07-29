@@ -27,6 +27,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: 'No active employees found' });
     }
 
+    const urlParams = new URL(request.url).searchParams;
+    const mode = urlParams.get('mode') || '1hr_deadline';
+
     // 2. Fetch all unfinished tasks (Pending, In Progress, Blocked)
     const { data: tasks, error: tasksError } = await supabase
       .from('tasks')
@@ -42,6 +45,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: 'No pending or in-progress tasks found' });
     }
 
+    // 2b. Filter tasks for 1-hour before deadline mode
+    const now = new Date();
+    const istNowStr = new Date(now.getTime() + 5.5 * 60 * 60 * 1000).toISOString();
+    const todayIST = istNowStr.split('T')[0];
+
+    const targetTasks = tasks.filter((t: any) => {
+      if (mode === 'all') return true;
+
+      // 1hr_deadline mode: check if task is due today and within the next 90 minutes
+      const taskDueDate = t.due_date || todayIST;
+      if (taskDueDate !== todayIST) return false;
+
+      const dueTime = t.due_time || '18:00';
+      const [h, m] = dueTime.split(':').map(Number);
+      const dueTimestamp = new Date(`${todayIST}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00+05:30`).getTime();
+      const diffMinutes = (dueTimestamp - now.getTime()) / (1000 * 60);
+
+      // Returns true if task is due in the next 10 to 90 minutes (~1 hour before deadline)
+      return diffMinutes >= -15 && diffMinutes <= 90;
+    });
+
+    if (targetTasks.length === 0) {
+      return NextResponse.json({ success: true, message: 'No tasks due in the next 1 hour found', mode });
+    }
+
     // 3. Prepare credentials
     const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
     const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -55,7 +83,7 @@ export async function GET(request: Request) {
     const results: any[] = [];
 
     // 4. Iterate over tasks and send reminders
-    for (const task of tasks) {
+    for (const task of targetTasks) {
       const assignedIds = task.assigned_employee_ids || [];
       if (assignedIds.length === 0) continue;
 
@@ -70,7 +98,10 @@ export async function GET(request: Request) {
         const cleanPhone = rawPhone.replace(/\D/g, '');
         const formattedTo = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
-        const reminderText = `Friendly reminder: You have a pending task "${task.title}" (Status: ${task.status}) due on ${task.due_date} at ${task.due_time || '18:00'}. Please update your status!`;
+        const isUrgentOneHour = mode === '1hr_deadline';
+        const reminderText = isUrgentOneHour
+          ? `⚠️ Urgent Deadline Alert: Your task "${task.title}" is due in 1 hour (at ${task.due_time || '18:00'}). Please submit your status update!`
+          : `Friendly reminder: You have a pending task "${task.title}" (Status: ${task.status}) due on ${task.due_date} at ${task.due_time || '18:00'}. Please update your status!`;
 
         const payload = {
           messaging_product: 'whatsapp',
