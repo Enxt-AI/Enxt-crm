@@ -54,13 +54,23 @@ export async function GET(request: Request) {
       if (mode === 'all') return true;
 
       // 1hr_deadline mode: check if task is due today and within the next 90 minutes
-      const taskDueDate = t.due_date || todayIST;
+      const rawDueDate = String(t.due_date || '');
+      const taskDueDate = rawDueDate.split('T')[0] || todayIST;
       if (taskDueDate !== todayIST) return false;
 
-      const dueTime = t.due_time || '18:00';
+      let dueTime = t.due_time || '18:00';
+      if (rawDueDate.includes('T')) {
+        const timePart = rawDueDate.split('T')[1]?.substring(0, 5);
+        if (timePart && timePart.includes(':')) {
+          dueTime = timePart;
+        }
+      }
+
       const [h, m] = dueTime.split(':').map(Number);
       const dueTimestamp = new Date(`${todayIST}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00+05:30`).getTime();
       const diffMinutes = (dueTimestamp - now.getTime()) / (1000 * 60);
+
+      console.log(`[cron 1hr check] Task "${t.title}": rawDueDate="${rawDueDate}", taskDueDate="${taskDueDate}", todayIST="${todayIST}", dueTime="${dueTime}", diffMinutes=${diffMinutes}`);
 
       // Returns true if task is due in the next 10 to 90 minutes (~1 hour before deadline)
       return diffMinutes >= -15 && diffMinutes <= 90;
