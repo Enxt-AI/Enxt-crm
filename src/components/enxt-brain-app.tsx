@@ -1395,7 +1395,7 @@ function DashboardView({
                       <strong>{project.title}</strong>
                       <span>Due Date: {dueDate} • Owner: {asText(project, "owner") || "Founder"}</span>
                     </div>
-                    <StatusBadge tone={isOverdueOrToday ? "red" : "amber"}>
+                    <StatusBadge tone={isOverdueOrToday ? "amber" : "neutral"}>
                       {isOverdueOrToday ? "Due Today / Overdue" : `Due ${dueDate}`}
                     </StatusBadge>
                   </button>
