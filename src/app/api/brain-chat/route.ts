@@ -71,6 +71,8 @@ const compactDocument = (document: BrainDocument) => {
     updatedAt: document.updatedAt,
     fields: document.fields
   };
+};
+
 // Helper function to extract text response payload from Gemini API
 const extractGeminiText = (payload: unknown) => {
   if (!payload || typeof payload !== "object") {
