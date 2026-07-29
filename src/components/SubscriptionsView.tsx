@@ -49,6 +49,31 @@ const DEPARTMENTS = ["Enxt AI", "Sales & CRM", "HR & Admin", "Marketing", "Engin
 const BILLING_CYCLES = ["Monthly", "Quarterly", "Yearly"];
 const STATUSES = ["Active", "Due Soon", "Renewal Needed", "Expired"];
 
+const calculateAutoRenewalDate = (purchaseDateStr: string, cycle: string): string => {
+  if (!purchaseDateStr) return "";
+  const parts = purchaseDateStr.split("-").map(Number);
+  if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) return "";
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  if (isNaN(d.getTime())) return "";
+
+  const c = (cycle || "").toLowerCase();
+  if (c.includes("quarterly")) {
+    d.setMonth(d.getMonth() + 3);
+  } else if (c.includes("yearly") || c.includes("annual")) {
+    d.setFullYear(d.getFullYear() + 1);
+  } else if (c.includes("semi")) {
+    d.setMonth(d.getMonth() + 6);
+  } else {
+    // Default to Monthly (+1 month)
+    d.setMonth(d.getMonth() + 1);
+  }
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export default function SubscriptionsView({
   subscriptions,
   employees,
@@ -1358,8 +1383,8 @@ export default function SubscriptionsView({
                 </label>
 
                 <label className="field-control">
-                  <span>Vendor *</span>
-                  <input type="text" required value={formFields.vendor} onChange={(e) => setFormFields({ ...formFields, vendor: e.target.value })} placeholder="e.g. OpenAI Inc." />
+                  <span>Vendor</span>
+                  <input type="text" value={formFields.vendor} onChange={(e) => setFormFields({ ...formFields, vendor: e.target.value })} placeholder="e.g. OpenAI Inc." />
                 </label>
 
                 <label className="field-control">
@@ -1377,7 +1402,18 @@ export default function SubscriptionsView({
                 {/* Billing */}
                 <label className="field-control">
                   <span>Billing Cycle</span>
-                  <select value={formFields.billingCycle} onChange={(e) => setFormFields({ ...formFields, billingCycle: e.target.value })}>
+                  <select 
+                    value={formFields.billingCycle} 
+                    onChange={(e) => {
+                      const newCycle = e.target.value;
+                      const autoRenewal = calculateAutoRenewalDate(formFields.purchaseDate, newCycle);
+                      setFormFields((prev: Record<string, any>) => ({
+                        ...prev,
+                        billingCycle: newCycle,
+                        renewalDate: autoRenewal || prev.renewalDate
+                      }));
+                    }}
+                  >
                     {BILLING_CYCLES.map(cycle => <option key={cycle} value={cycle}>{cycle}</option>)}
                   </select>
                 </label>
@@ -1403,7 +1439,19 @@ export default function SubscriptionsView({
                 {/* Dates */}
                 <label className="field-control">
                   <span>Purchase Date</span>
-                  <input type="date" value={formFields.purchaseDate} onChange={(e) => setFormFields({ ...formFields, purchaseDate: e.target.value })} />
+                  <input 
+                    type="date" 
+                    value={formFields.purchaseDate} 
+                    onChange={(e) => {
+                      const newPurchaseDate = e.target.value;
+                      const autoRenewal = calculateAutoRenewalDate(newPurchaseDate, formFields.billingCycle);
+                      setFormFields((prev: Record<string, any>) => ({
+                        ...prev,
+                        purchaseDate: newPurchaseDate,
+                        renewalDate: autoRenewal || prev.renewalDate
+                      }));
+                    }} 
+                  />
                 </label>
 
                 <label className="field-control">
