@@ -313,11 +313,51 @@ export default function EnxtBrainApp() {
   }, [documents, documentQuery]);
 
   const projects = useMemo(() => {
-    const list = documents.filter((document) => document.type === "project");
+    // Return EXCLUSIVELY projects that are in the "Project Started" stage from CRM (excluding completed ones)
+    const crmStartedProjects: BrainDocument[] = documents
+      .filter((document) => {
+        if (document.type === "lead") {
+          const stage = (asText(document, "stage") || "").toLowerCase();
+          return stage === "project started";
+        }
+        if (document.type === "project") {
+          const stage = (asText(document, "stage") || asText(document, "status") || "").toLowerCase();
+          return stage === "project started" || stage === "in progress" || stage === "active";
+        }
+        return false;
+      })
+      .map((lead) => {
+        if (lead.type === "project") return lead;
+        const companyName = asText(lead, "company");
+        const details = asText(lead, "projectDetails");
+        const title = companyName && details ? `${companyName} - ${details}` : companyName || details || lead.title;
+        return {
+          id: lead.id,
+          type: "project",
+          title: title,
+          status: "In Progress",
+          owner: asText(lead, "owner") || "Founder",
+          updatedAt: lead.updatedAt,
+          tags: ["crm-project", ...(lead.tags || [])],
+          body: lead.body || "",
+          fields: {
+            ...lead.fields,
+            company: companyName,
+            client: companyName || asText(lead, "contactPerson") || "CRM Client",
+            contractValue: asText(lead, "contractValue") || asText(lead, "charge") || "0",
+            progress: 50,
+            health: "Green",
+            risk: "None",
+            dueDate: asText(lead, "deadline") || "",
+            lastCommunicationDate: asText(lead, "lastCommunicationDate") || ""
+          }
+        };
+      });
+
     const query = documentQuery.trim().toLowerCase();
-    if (!query) return list;
-    return list.filter((project) => {
-      const searchable = `${project.title} ${asText(project, "client")} ${asText(project, "owner")} ${asText(project, "phase")} ${project.body}`.toLowerCase();
+    if (!query) return crmStartedProjects;
+    return crmStartedProjects.filter((project) => {
+      const searchable = `${project.title} ${asText(project, "client")} ${asText(project, "company")} ${asText(project, "owner")} ${asText(project, "phase")} ${project.body}`.toLowerCase();
       return searchable.includes(query);
     });
   }, [documents, documentQuery]);
@@ -1309,7 +1349,15 @@ function DashboardView({
   clientValue: number;
   selectDocument: (document: BrainDocument) => void;
 }) {
-  const amberProjects = projects.filter((project) => asText(project, "health") === "Amber");
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const projectsNearDeadline = [...projects]
+    .sort((a, b) => {
+      const dateA = asText(a, "dueDate") || asText(a, "deadline") || "9999-99-99";
+      const dateB = asText(b, "dueDate") || asText(b, "deadline") || "9999-99-99";
+      return dateA.localeCompare(dateB);
+    })
+    .slice(0, 5);
+
   const activeLeads = leads.filter((l) => {
     const stage = asText(l, "stage");
     return stage === "Contacts" || stage === "Proposal" || stage === "Project Started" || stage === "Completed";
@@ -1330,20 +1378,30 @@ function DashboardView({
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Watchlist</p>
-              <h3>Project Risk</h3>
+              <h3>Upcoming Project Deadlines</h3>
             </div>
             <Sparkles size={18} aria-hidden="true" />
           </div>
           <div className="stack-list">
-            {amberProjects.map((project) => (
-              <button className="row-button" key={project.id} onClick={() => selectDocument(project)} type="button">
-                <div>
-                  <strong>{project.title}</strong>
-                  <span>{asText(project, "risk")}</span>
-                </div>
-                <StatusBadge tone="amber">{asText(project, "health")}</StatusBadge>
-              </button>
-            ))}
+            {projectsNearDeadline.length === 0 ? (
+              <p style={{ padding: "16px", color: "var(--muted)", fontSize: "0.88rem" }}>No active projects listed.</p>
+            ) : (
+              projectsNearDeadline.map((project) => {
+                const dueDate = asText(project, "dueDate") || asText(project, "deadline") || "No date set";
+                const isOverdueOrToday = dueDate !== "No date set" && dueDate <= todayStr;
+                return (
+                  <button className="row-button" key={project.id} onClick={() => selectDocument(project)} type="button">
+                    <div>
+                      <strong>{project.title}</strong>
+                      <span>Due Date: {dueDate} • Owner: {asText(project, "owner") || "Founder"}</span>
+                    </div>
+                    <StatusBadge tone={isOverdueOrToday ? "red" : "amber"}>
+                      {isOverdueOrToday ? "Due Today / Overdue" : `Due ${dueDate}`}
+                    </StatusBadge>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
