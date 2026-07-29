@@ -106,7 +106,7 @@ Company: ${lead.company}
 Contact: ${lead.contactPerson || "Not provided"}
 Project: ${lead.projectDetails || "Not provided"}
 Contract value: ${lead.contractValue || "Not provided"}
-Cess: ${lead.cess || lead.charge || "Not provided"}
+SaaS: ${lead.cess || lead.charge || "Not provided"}
 Payment due: ${lead.paymentDue || "Not provided"}
 Payment received: ${lead.paymentReceived || "Not provided"}
 Contract signed status: ${lead.contractSignedStatus || "Not provided"}

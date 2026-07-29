@@ -3602,7 +3602,7 @@ function CrmView({
                 </select>
               </label>
               <EditableField label="Contract Value" value={leadEditFields.contractValue} onChange={(value) => updateLeadField("contractValue", value)} />
-              <EditableField label="Cess" value={leadEditFields.charge} onChange={(value) => updateLeadField("charge", value)} />
+              <EditableField label="SaaS" value={leadEditFields.charge} onChange={(value) => updateLeadField("charge", value)} />
               <EditableField label="Payment Due" value={leadEditFields.paymentDue} onChange={(value) => updateLeadField("paymentDue", value)} />
               <EditableField label="Payment Received" value={leadEditFields.paymentReceived} onChange={(value) => updateLeadField("paymentReceived", value)} />
               <EditableField label="Contract Signed Status" value={leadEditFields.contractSignedStatus} onChange={(value) => updateLeadField("contractSignedStatus", value)} />
