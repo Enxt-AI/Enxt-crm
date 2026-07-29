@@ -49,6 +49,7 @@ const DEPARTMENTS = ["Enxt AI", "Sales & CRM", "HR & Admin", "Marketing", "Engin
 const BILLING_CYCLES = ["Monthly", "Quarterly", "Yearly"];
 const STATUSES = ["Active", "Due Soon", "Renewal Needed", "Expired"];
 
+// Helper function to auto-calculate renewal date based on purchase date and billing cycle (Monthly, Quarterly, Yearly, Semi-Annual)
 const calculateAutoRenewalDate = (purchaseDateStr: string, cycle: string): string => {
   if (!purchaseDateStr) return "";
   const parts = purchaseDateStr.split("-").map(Number);
