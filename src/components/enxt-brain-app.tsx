@@ -941,6 +941,12 @@ export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccoun
     );
   };
 
+  const rejectChange = (change: ChangeRequest) => {
+    setChangeRequests((current) =>
+      current.map((item) => (item.id === change.id ? { ...item, status: "rejected" } : item))
+    );
+  };
+
   const getViewTitle = (view: View) => {
     switch (view) {
       case "dashboard":
