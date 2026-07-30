@@ -50,12 +50,13 @@ import SubscriptionsView from "./SubscriptionsView";
 import FinanceView from "./FinanceView";
 import WhatsAppChatView from "./WhatsAppChatView";
 import StatusDashboardView from "./StatusDashboardView";
+import { ManagersView } from "./ManagersView";
 
 
 import { brainDocuments, initialMockSubscriptions } from "../lib/demo-documents";
-import type { BrainDocument, ChangeRequest, ChatMessage } from "../lib/types";
+import type { BrainDocument, ChangeRequest, ChatMessage, UserAccount } from "../lib/types";
 
-type View = "dashboard" | "employees" | "projects" | "crm" | "documents" | "finance" | "tasks" | "whatsapp" | "subscriptions";
+type View = "dashboard" | "employees" | "projects" | "crm" | "documents" | "finance" | "tasks" | "whatsapp" | "subscriptions" | "managers";
 type EmployeeEditState = Record<string, string>;
 type LeadEditState = Record<string, string>;
 type ViewedEmployeeDocument = {
@@ -75,6 +76,7 @@ const navItems: { id: View; label: string; icon: LucideIcon }[] = [
   { id: "documents", label: "Documents", icon: FileText },
   { id: "tasks", label: "Tasks", icon: ClipboardList },
   { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { id: "managers", label: "Managers", icon: ShieldCheck },
 ];
 
 const formatCurrency = (value: number) =>
@@ -155,7 +157,7 @@ function AnimatedValue({ value }: { value: string | number }) {
 }
 
 const leadStages = ["Old Leads", "Contacts", "Proposal", "Project Started", "Completed"] as const;
-export default function EnxtBrainApp() {
+export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccount | null }) {
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [showProjectCalendar, setShowProjectCalendar] = useState(false);
@@ -167,6 +169,20 @@ export default function EnxtBrainApp() {
   const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" | "loading" } | null>(null);
   const [activeTaskTab, setActiveTaskTab] = useState<"tasks" | "status">("tasks");
   const [hoveredTaskTab, setHoveredTaskTab] = useState<"tasks" | "status" | null>(null);
+
+  const filteredNavItems = useMemo(() => {
+    return navItems.filter((item) => {
+      if (!currentUser || currentUser.role === "superadmin") {
+        return true;
+      }
+      if (item.id === "managers") return false;
+      if (item.id === "dashboard") return true;
+
+      if (!currentUser.permissions || currentUser.permissions.length === 0) return true;
+      const perm = currentUser.permissions.find((p) => p.module_key === item.id);
+      return perm ? perm.can_view : false;
+    });
+  }, [currentUser]);
 
   const showToast = (message: string, type: "success" | "error" | "loading" = "success") => {
     setGlobalToast({ message, type });
@@ -925,10 +941,31 @@ export default function EnxtBrainApp() {
     );
   };
 
-  const rejectChange = (change: ChangeRequest) => {
-    setChangeRequests((current) =>
-      current.map((item) => (item.id === change.id ? { ...item, status: "rejected" } : item))
-    );
+  const getViewTitle = (view: View) => {
+    switch (view) {
+      case "dashboard":
+        return "Command Dashboard";
+      case "employees":
+        return "Employee Management";
+      case "projects":
+        return "Project Portfolio";
+      case "crm":
+        return "CRM Sales Pipeline";
+      case "documents":
+        return "Document Repository";
+      case "finance":
+        return "Financial Intelligence";
+      case "tasks":
+        return "Task & Work Rhythm";
+      case "whatsapp":
+        return "WhatsApp Communications";
+      case "subscriptions":
+        return "SaaS & Subscriptions";
+      case "managers":
+        return "Manager & Permission Management";
+      default:
+        return "Workspace";
+    }
   };
 
   return (
@@ -963,7 +1000,7 @@ export default function EnxtBrainApp() {
                 }}
               />
             )}
-            {navItems.map((item) => {
+            {filteredNavItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
@@ -1212,6 +1249,10 @@ export default function EnxtBrainApp() {
                   url: doc.url
                 })}
               />
+            )}
+
+            {activeView === "managers" && (
+              <ManagersView currentUser={currentUser} />
             )}
           </div>
         </main>
