@@ -104,77 +104,119 @@ export async function GET(request: Request) {
 
     let sentCount = 0;
     let failedCount = 0;
+    const results: any[] = [];
     const replyDeadline = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
 
     for (const emp of activeEmployees) {
       const empName = emp.fields?.name || emp.title || 'Team Member';
-      const empPhone = emp.fields?.phone || '';
+      const rawPhone = String(emp.fields?.phone || '').trim();
+      const cleanDigits = rawPhone.replace(/\D/g, '');
+
+      if (!cleanDigits || cleanDigits.length < 10) {
+        console.warn(`[status-requests/send] Skipping ${empName}: invalid phone "${rawPhone}"`);
+        failedCount++;
+        continue;
+      }
+
+      const formattedTo = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
       const department = emp.fields?.department || emp.fields?.role || '';
 
-      // Find active project for this employee
-      const empTask = tasks.find((t: any) =>
-        t.status !== 'Completed' &&
-        (t.assigned_employee_ids || []).includes(emp.id)
-      );
+      // Find active project/task for this employee
+      const empNameLower = (emp.fields?.name || emp.title || '').toLowerCase();
+      const empIdLower = (emp.id || '').toLowerCase();
+
+      const empTask = tasks.find((t: any) => {
+        if (String(t.status || '').toLowerCase() === 'completed') return false;
+        const assigned = t.assigned_employee_ids || [];
+        return assigned.some((idOrName: string) => {
+          const s = String(idOrName || '').toLowerCase();
+          return s === empIdLower || s === empNameLower || (s.length > 3 && empIdLower.includes(s)) || (s.length > 3 && empNameLower.includes(s));
+        });
+      });
 
       if (!empTask) {
+        console.log(`[status-requests/send] Skipping ${empName} (${formattedTo}): no active task assigned.`);
         continue;
       }
 
-      const project = empTask.title || '';
+      const project = empTask.title || 'Assigned Project';
 
-      const requestId = `sr-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+      // 1. Prepare Meta WhatsApp direct dispatch
+      const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
+      const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
-      // 1. Insert status request row
-      const { error: insertError } = await supabase
-        .from('status_requests')
-        .insert({
-          id: requestId,
-          employee_id: emp.id,
-          employee_name: empName,
-          employee_phone: empPhone.replace(/\D/g, ''),
-          project,
-          department,
-          schedule_label: schedule,
-          scheduled_time: scheduledTime,
-          sent_at: now.toISOString(),
-          reply_deadline: replyDeadline,
-          status: 'sent',
-        });
+      const rawMessage = buildStatusMessage(empName, schedule, project);
+      const cleanMessageParam = rawMessage.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
 
-      if (insertError) {
-        console.error(`[status-requests/send] Failed to insert request for ${empName}:`, insertError);
-        failedCount++;
-        continue;
-      }
+      let metaSuccess = false;
+      let metaStatus = 0;
+      let metaData: any = null;
 
-      // 2. Send WhatsApp message (with template for 24hr+ delivery)
-      const greeting = GREETINGS[schedule];
-      const message = buildStatusMessage(empName, schedule, project);
-      try {
-        const sendRes = await fetch(new URL('/api/whatsapp/send', request.url).toString(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: empPhone,
-            body: message,
-            template: {
-              name: 'team_broadcast',
-              parameters: [empName, message],
+      if (ACCESS_TOKEN && PHONE_ID) {
+        try {
+          const metaUrl = `https://graph.facebook.com/v20.0/${PHONE_ID}/messages`;
+          const metaRes = await fetch(metaUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${ACCESS_TOKEN}`,
+              'Content-Type': 'application/json',
             },
-          }),
-        });
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              recipient_type: 'individual',
+              to: formattedTo,
+              type: 'template',
+              template: {
+                name: 'team_broadcast',
+                language: { code: 'en_US' },
+                components: [
+                  {
+                    type: 'body',
+                    parameters: [
+                      { type: 'text', text: empName },
+                      { type: 'text', text: cleanMessageParam }
+                    ]
+                  }
+                ]
+              }
+            })
+          });
 
-        if (sendRes.ok) {
-          sentCount++;
-          console.log(`[status-requests/send] ✓ Sent to ${empName} (${empPhone})`);
-        } else {
-          failedCount++;
-          console.error(`[status-requests/send] ✗ Failed to send to ${empName}`);
+          metaStatus = metaRes.status;
+          metaSuccess = metaRes.ok;
+          metaData = await metaRes.json();
+        } catch (err: any) {
+          console.error(`[status-requests/send] Meta API error for ${empName}:`, err);
         }
-      } catch (err) {
+      }
+
+      if (metaSuccess) {
+        sentCount++;
+        console.log(`[status-requests/send] ✓ Direct Meta dispatch to ${empName} (${formattedTo}): status ${metaStatus}`);
+
+        // Insert tracking row ONLY when WhatsApp message accepted by Meta
+        const requestId = `sr-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+        await supabase
+          .from('status_requests')
+          .insert({
+            id: requestId,
+            employee_id: emp.id,
+            employee_name: empName,
+            employee_phone: formattedTo,
+            project,
+            department,
+            schedule_label: schedule,
+            scheduled_time: scheduledTime,
+            sent_at: now.toISOString(),
+            reply_deadline: replyDeadline,
+            status: 'sent',
+          });
+
+        results.push({ name: empName, phone: formattedTo, status: metaStatus, success: true, metaData });
+      } else {
         failedCount++;
-        console.error(`[status-requests/send] ✗ Error sending to ${empName}:`, err);
+        console.error(`[status-requests/send] ✗ Meta dispatch failed for ${empName} (${formattedTo}): status ${metaStatus}`, metaData);
+        results.push({ name: empName, phone: formattedTo, status: metaStatus, success: false, metaData });
       }
     }
 
@@ -184,6 +226,7 @@ export async function GET(request: Request) {
       sent: sentCount,
       failed: failedCount,
       total: activeEmployees.length,
+      details: results
     });
   } catch (error: any) {
     console.error('[status-requests/send] Error:', error);
