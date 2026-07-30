@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getRBACStore, saveRBACStore, logAuditEvent } from '../../../../lib/auth-service';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
+    const params = await props.params;
     const managerId = params.id;
     const body = await request.json();
     const { name, email, department, is_active, permissions, password, performedBy } = body;
@@ -49,8 +50,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
+    const params = await props.params;
     const managerId = params.id;
     const { action, performedBy, newPassword } = await request.json();
 
@@ -98,8 +100,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
+    const params = await props.params;
     const managerId = params.id;
     const url = new URL(request.url);
     const performedBy = url.searchParams.get('performedBy') || 'Super Admin';
