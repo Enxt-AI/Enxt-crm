@@ -7,8 +7,8 @@ import { ShieldCheck, Lock, Mail, Eye, EyeOff, ArrowLeft, Sparkles, AlertCircle,
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@enxtbrain.com");
-  const [password, setPassword] = useState("Admin@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -45,73 +45,78 @@ export default function SuperAdminLoginPage() {
   };
 
   return (
-    <main className="app-shell" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", padding: "24px" }}>
+    <main className="app-shell" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflowY: "auto", padding: "24px", boxSizing: "border-box" }}>
       {/* Glow Orbs */}
-      <div style={{ position: "absolute", top: "15%", left: "20%", width: "350px", height: "350px", borderRadius: "50%", background: "radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)", filter: "blur(40px)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: "15%", right: "20%", width: "350px", height: "350px", borderRadius: "50%", background: "radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%)", filter: "blur(40px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: "15%", left: "20%", width: "350px", height: "350px", borderRadius: "50%", background: "radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, transparent 70%)", filter: "blur(40px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: "15%", right: "20%", width: "350px", height: "350px", borderRadius: "50%", background: "radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)", filter: "blur(40px)", pointerEvents: "none" }} />
 
       <div style={{ width: "100%", maxWidth: "440px", zIndex: 10 }}>
         {/* Back Link */}
-        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "var(--muted)", fontSize: "0.88rem", textDecoration: "none", marginBottom: "20px", transition: "color 0.2s" }}>
+        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "var(--muted)", fontSize: "0.88rem", textDecoration: "none", marginBottom: "20px", fontWeight: 600 }}>
           <ArrowLeft size={16} /> Back to Portal Landing
         </Link>
 
-        {/* Card */}
-        <div className="panel" style={{ padding: "36px 32px", border: "1px solid rgba(255, 255, 255, 0.12)", background: "rgba(23, 27, 38, 0.85)", backdropFilter: "blur(20px)", borderRadius: "20px", boxShadow: "0 20px 40px rgba(0, 0, 0, 0.4)" }}>
+        {/* Light-Themed Card */}
+        <div className="panel" style={{ padding: "36px 32px", border: "1px solid var(--line)", background: "var(--panel, #ffffff)", borderRadius: "20px", boxShadow: "0 20px 40px rgba(0, 0, 0, 0.08)" }}>
           {/* Header */}
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
-            <div style={{ width: "56px", height: "56px", borderRadius: "16px", background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2))", border: "1px solid rgba(99, 102, 241, 0.4)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "16px" }}>
-              <ShieldCheck size={28} style={{ color: "#a855f7" }} />
+            <div style={{ width: "56px", height: "56px", borderRadius: "16px", background: "linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(168, 85, 247, 0.15))", border: "1px solid rgba(124, 58, 237, 0.3)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "16px" }}>
+              <ShieldCheck size={28} style={{ color: "#7c3aed" }} />
             </div>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0 0 6px 0", color: "#fff" }}>Super Admin Portal</h2>
-            <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--muted)" }}>Executive control & system administration</p>
-          </div>
-
-          {/* Demo Alert */}
-          <div style={{ background: "rgba(99, 102, 241, 0.08)", border: "1px solid rgba(99, 102, 241, 0.25)", borderRadius: "10px", padding: "12px 14px", marginBottom: "20px", fontSize: "0.82rem", color: "#c7d2fe" }}>
-            <strong>Demo Account:</strong> <code>admin@enxtbrain.com</code> | Pass: <code>Admin@123</code>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: "0 0 6px 0", color: "var(--ink)" }}>Super Admin Portal</h2>
+            <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--muted)", fontWeight: 500 }}>Executive control & system administration</p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div style={{ background: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "20px", fontSize: "0.85rem", color: "#fca5a5", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "20px", fontSize: "0.85rem", color: "#dc2626", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
               <AlertCircle size={16} /> {error}
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+          <form onSubmit={handleLogin} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+            {/* Fake hidden inputs to trick browser password autofill */}
+            <input type="text" name="fake_email_prevent_autofill" style={{ display: "none" }} tabIndex={-1} autoComplete="off" readOnly />
+            <input type="password" name="fake_password_prevent_autofill" style={{ display: "none" }} tabIndex={-1} autoComplete="new-password" readOnly />
+
             <div>
-              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#d1d5db", marginBottom: "6px" }}>Company Email</label>
+              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)", marginBottom: "6px" }}>Company Email</label>
               <div style={{ position: "relative" }}>
-                <Mail size={18} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#6b7280" }} />
+                <Mail size={18} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }} />
                 <input
                   type="email"
                   required
+                  name="enxt_admin_email_field"
+                  id="enxt_admin_email_field"
+                  autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@enxtbrain.com"
-                  style={{ width: "100%", padding: "12px 14px 12px 42px", background: "rgba(15, 18, 26, 0.8)", border: "1px solid rgba(255, 255, 255, 0.12)", borderRadius: "10px", color: "#fff", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "12px 14px 12px 42px", background: "var(--surface, rgba(0,0,0,0.03))", border: "1px solid var(--line)", borderRadius: "10px", color: "var(--ink)", fontSize: "0.9rem", outline: "none", boxSizing: "border-box", fontWeight: 500 }}
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#d1d5db", marginBottom: "6px" }}>Password</label>
+              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)", marginBottom: "6px" }}>Password</label>
               <div style={{ position: "relative" }}>
-                <Lock size={18} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#6b7280" }} />
+                <Lock size={18} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }} />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
+                  name="enxt_admin_password_field"
+                  id="enxt_admin_password_field"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  style={{ width: "100%", padding: "12px 42px 12px 42px", background: "rgba(15, 18, 26, 0.8)", border: "1px solid rgba(255, 255, 255, 0.12)", borderRadius: "10px", color: "#fff", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "12px 42px 12px 42px", background: "var(--surface, rgba(0,0,0,0.03))", border: "1px solid var(--line)", borderRadius: "10px", color: "var(--ink)", fontSize: "0.9rem", outline: "none", boxSizing: "border-box", fontWeight: 500 }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0 }}
+                  style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0 }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -119,16 +124,16 @@ export default function SuperAdminLoginPage() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.82rem" }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "#9ca3af", cursor: "pointer" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "var(--muted)", cursor: "pointer", fontWeight: 600 }}>
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{ accentColor: "#9333ea", borderRadius: "4px" }}
+                  style={{ accentColor: "#7c3aed", borderRadius: "4px" }}
                 />
                 Remember me
               </label>
-              <button type="button" onClick={() => alert("Password reset link sent to registered email.")} style={{ background: "none", border: "none", color: "#a855f7", cursor: "pointer", padding: 0, fontWeight: 500 }}>
+              <button type="button" onClick={() => alert("Password reset link sent to registered email.")} style={{ background: "none", border: "none", color: "#7c3aed", cursor: "pointer", padding: 0, fontWeight: 700 }}>
                 Forgot Password?
               </button>
             </div>
@@ -142,17 +147,16 @@ export default function SuperAdminLoginPage() {
                 borderRadius: "10px",
                 border: "none",
                 background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-                color: "#fff",
+                color: "#ffffff",
                 fontSize: "0.95rem",
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: loading ? "wait" : "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "10px",
-                boxShadow: "0 8px 20px rgba(147, 51, 234, 0.3)",
-                marginTop: "8px",
-                transition: "transform 0.15s, box-shadow 0.15s"
+                boxShadow: "0 8px 20px rgba(124, 58, 237, 0.35)",
+                marginTop: "8px"
               }}
             >
               {loading ? (

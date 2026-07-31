@@ -8,12 +8,8 @@ export const ALL_MODULES: { key: ModuleKey; label: string }[] = [
   { key: "tasks", label: "Tasks" },
   { key: "crm", label: "CRM Pipeline" },
   { key: "documents", label: "Documents" },
-  { key: "attendance", label: "Attendance" },
-  { key: "reports", label: "Reports" },
-  { key: "finance", label: "Finance" },
   { key: "whatsapp", label: "WhatsApp Broadcast" },
-  { key: "subscriptions", label: "Subscriptions" },
-  { key: "settings", label: "Settings" }
+  { key: "subscriptions", label: "Subscriptions" }
 ];
 
 export const INITIAL_USERS: UserAccount[] = [
@@ -66,17 +62,17 @@ export function getDefaultPermissionsForRole(presetName: "all" | "readonly" | "p
       return { module_key: m.key, can_view: true, can_create: false, can_edit: false, can_delete: false };
     }
     if (presetName === "project_manager") {
-      const isProj = ["dashboard", "projects", "tasks", "documents", "reports"].includes(m.key);
+      const isProj = ["dashboard", "projects", "tasks", "documents"].includes(m.key);
       return {
         module_key: m.key,
-        can_view: m.key !== "finance" && m.key !== "subscriptions",
+        can_view: m.key !== "subscriptions",
         can_create: isProj,
         can_edit: isProj,
         can_delete: m.key === "tasks"
       };
     }
     if (presetName === "hr_manager") {
-      const isHR = ["dashboard", "employees", "attendance", "documents", "reports"].includes(m.key);
+      const isHR = ["dashboard", "employees", "documents"].includes(m.key);
       return {
         module_key: m.key,
         can_view: isHR,

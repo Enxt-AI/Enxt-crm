@@ -54,11 +54,7 @@ export type ModuleKey =
   | "tasks"
   | "crm"
   | "documents"
-  | "attendance"
-  | "reports"
-  | "finance"
   | "whatsapp"
-  | "settings"
   | "managers"
   | "subscriptions";
 

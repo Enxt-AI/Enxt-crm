@@ -29,8 +29,8 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
     name: "",
     email: "",
     password: "",
-    department: "Engineering",
-    roleLabel: "Content Manager",
+    department: "",
+    roleLabel: "",
     is_active: true
   });
   const [formPermissions, setFormPermissions] = useState<ManagerPermission[]>(
@@ -66,9 +66,9 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
     setFormData({
       name: "",
       email: "",
-      password: "Manager@" + Math.floor(100 + Math.random() * 900),
-      department: "Engineering",
-      roleLabel: "Content Manager",
+      password: "",
+      department: "",
+      roleLabel: "",
       is_active: true
     });
     setFormPermissions(getDefaultPermissionsForRole("project_manager"));
@@ -269,7 +269,7 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
       </div>
 
       {/* Table Container */}
-      <div className="panel" style={{ padding: 0, overflow: "hidden", borderRadius: "16px", border: "1px solid var(--line)" }}>
+      <div className="panel" style={{ padding: 0, overflow: "visible", borderRadius: "16px", border: "1px solid var(--line)", position: "relative" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
           <thead>
             <tr style={{ background: "rgba(0, 0, 0, 0.03)", borderBottom: "1px solid var(--line)", color: "var(--muted)", textTransform: "uppercase", fontSize: "0.75rem", letterSpacing: "0.8px", fontWeight: 800 }}>
@@ -329,7 +329,10 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
                     <td style={{ padding: "18px 24px", textAlign: "right", position: "relative" }}>
                       <button
                         type="button"
-                        onClick={() => setActiveMenuId(activeMenuId === mgr.id ? null : mgr.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === mgr.id ? null : mgr.id);
+                        }}
                         style={{
                           width: "36px",
                           height: "36px",
@@ -349,22 +352,36 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
 
                       {/* Dropdown Action Menu */}
                       {activeMenuId === mgr.id && (
-                        <div style={{ position: "absolute", right: "24px", top: "54px", background: "var(--panel, #ffffff)", border: "1px solid var(--line)", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0, 0, 0, 0.2)", zIndex: 100, width: "180px", padding: "6px 0", textAlign: "left" }}>
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(mgr)}
-                            style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", color: "var(--ink)", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}
-                          >
-                            <Edit3 size={15} style={{ color: "#059669" }} /> Edit Permissions
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteManager(mgr)}
-                            style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", color: "#dc2626", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}
-                          >
-                            <Trash2 size={15} style={{ color: "#dc2626" }} /> Delete User
-                          </button>
-                        </div>
+                        <>
+                          {/* Invisible Backdrop to dismiss menu on click outside */}
+                          <div
+                            onClick={() => setActiveMenuId(null)}
+                            style={{ position: "fixed", inset: 0, zIndex: 999 }}
+                          />
+
+                          <div style={{ position: "absolute", right: "24px", top: "50px", background: "#ffffff", border: "1px solid var(--line)", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0, 0, 0, 0.15)", zIndex: 1000, width: "170px", padding: "6px 0", textAlign: "left" }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                openEditModal(mgr);
+                              }}
+                              style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", color: "#111827", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}
+                            >
+                              <Edit3 size={15} style={{ color: "#059669" }} /> Edit Permissions
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                handleDeleteManager(mgr);
+                              }}
+                              style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", color: "#dc2626", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}
+                            >
+                              <Trash2 size={15} style={{ color: "#dc2626" }} /> Delete User
+                            </button>
+                          </div>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -416,7 +433,11 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
               </button>
             </div>
 
-            <form onSubmit={handleSaveManager} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+            <form onSubmit={handleSaveManager} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+              {/* Fake hidden inputs to prevent password autofill */}
+              <input type="text" name="fake_modal_user_name" style={{ display: "none" }} tabIndex={-1} autoComplete="off" readOnly />
+              <input type="password" name="fake_modal_user_pass" style={{ display: "none" }} tabIndex={-1} autoComplete="new-password" readOnly />
+
               {/* Basic Fields */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <div>
@@ -424,9 +445,11 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
                   <input
                     type="text"
                     required
+                    name="mgr_fullname_nocache"
+                    autoComplete="off"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. Saurabh"
+                    placeholder="Enter full name"
                     style={{ width: "100%", padding: "9px 12px", background: "var(--surface, rgba(0,0,0,0.03))", border: "1px solid var(--line)", borderRadius: "8px", color: "var(--ink)", fontSize: "0.88rem", outline: "none", boxSizing: "border-box", fontWeight: 500 }}
                   />
                 </div>
@@ -436,9 +459,11 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
                   <input
                     type="email"
                     required
+                    name="mgr_email_nocache"
+                    autoComplete="off"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="saurabh@enxtai.com"
+                    placeholder="manager@enxtbrain.com"
                     style={{ width: "100%", padding: "9px 12px", background: "var(--surface, rgba(0,0,0,0.03))", border: "1px solid var(--line)", borderRadius: "8px", color: "var(--ink)", fontSize: "0.88rem", outline: "none", boxSizing: "border-box", fontWeight: 500 }}
                   />
                 </div>
@@ -447,9 +472,12 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
                   <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "var(--ink)", marginBottom: "4px" }}>Role Designation</label>
                   <input
                     type="text"
+                    required
+                    name="mgr_role_nocache"
+                    autoComplete="off"
                     value={formData.roleLabel}
                     onChange={(e) => setFormData({ ...formData, roleLabel: e.target.value })}
-                    placeholder="Content Manager / Project Manager"
+                    placeholder="e.g. Content Manager"
                     style={{ width: "100%", padding: "9px 12px", background: "var(--surface, rgba(0,0,0,0.03))", border: "1px solid var(--line)", borderRadius: "8px", color: "var(--ink)", fontSize: "0.88rem", outline: "none", boxSizing: "border-box", fontWeight: 500 }}
                   />
                 </div>
@@ -458,10 +486,12 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
                   <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "var(--ink)", marginBottom: "4px" }}>Password</label>
                   <input
                     type="text"
-                    required
+                    required={!editingManager}
+                    name="mgr_pass_nocache"
+                    autoComplete="new-password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Temporary password"
+                    placeholder={editingManager ? "Leave blank to keep current password" : "Enter password"}
                     style={{ width: "100%", padding: "9px 12px", background: "var(--surface, rgba(0,0,0,0.03))", border: "1px solid var(--line)", borderRadius: "8px", color: "var(--ink)", fontSize: "0.88rem", outline: "none", boxSizing: "border-box", fontWeight: 500 }}
                   />
                 </div>
