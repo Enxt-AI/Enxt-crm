@@ -581,8 +581,7 @@ export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccoun
         body: JSON.stringify({
           phone: newPhone,
           employeeName: employeeName,
-          useGemini: true,
-          message: welcomeFallback,
+          useGemini: false,
           templateName: "employee_welcome",
           templateParams: [employeeName]
         })
@@ -729,8 +728,7 @@ export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccoun
         body: JSON.stringify({
           phone: employeePhone,
           employeeName: employeeName,
-          useGemini: true,
-          message: welcomeFallback,
+          useGemini: false,
           templateName: "employee_welcome",
           templateParams: [employeeName]
         })

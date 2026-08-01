@@ -108,7 +108,7 @@ Include friendly emojis. CRITICAL: Keep your entire output on ONE SINGLE LINE wi
             type: "template",
             template: {
               name: templateName,
-              language: { code: templateName === 'task_due_one_hour' ? 'en' : 'en_US' },
+              language: { code: (templateName === 'task_due_one_hour' || templateName === 'employee_welcome') ? 'en' : 'en_US' },
               components: [{
                 type: "body",
                 parameters: sanitizedParams.map((p: string) => ({ type: "text", text: p })),
