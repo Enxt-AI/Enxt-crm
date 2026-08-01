@@ -1,0 +1,22 @@
+name: Scheduled WhatsApp Reminders & Check-ins
+
+on:
+  schedule:
+    # Morning check-in (10:00 AM IST = 04:30 UTC on Mon-Fri)
+    - cron: '30 4 * * 1-5'
+    # Midday check-in (1:00 PM IST = 07:30 UTC on Mon-Fri)
+    - cron: '30 7 * * 1-5'
+    # Evening check-in (6:00 PM IST = 12:30 UTC on Mon-Fri)
+    - cron: '30 12 * * 1-5'
+    # Timeout & task deadline check every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Check-Timeouts & Status Requests
+        run: |
+          echo "Triggering automated check-timeouts and daily status reminders..."
+          curl -s "https://enxt-crm.vercel.app/api/status-requests/check-timeouts" || true
