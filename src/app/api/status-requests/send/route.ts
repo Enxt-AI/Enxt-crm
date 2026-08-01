@@ -83,6 +83,18 @@ export async function GET(request: Request) {
 
     const force = url.searchParams.get('force') === 'true';
 
+    // Weekend check: Automated requests run Mon-Fri only. Manual sends (force=true) are allowed on weekends.
+    const dayOfWeek = istNow.getUTCDay(); // 0 = Sunday, 6 = Saturday
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    if (!force && isWeekend) {
+      return NextResponse.json({
+        success: true,
+        message: 'Today is a weekend. Automated status requests run Mon-Fri only. Manual send allowed with force=true.',
+        sent: 0,
+        skippedWeekend: true,
+      });
+    }
+
     // Check if requests for this schedule today already exist
     if (!force) {
       const { data: existing } = await supabase
