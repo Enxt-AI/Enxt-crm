@@ -583,8 +583,8 @@ export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccoun
           employeeName: employeeName,
           useGemini: true,
           message: welcomeFallback,
-          templateName: "team_broadcast",
-          templateParams: [employeeName, welcomeFallback]
+          templateName: "employee_welcome",
+          templateParams: [employeeName]
         })
       })
         .then(res => res.json())
@@ -731,8 +731,8 @@ export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccoun
           employeeName: employeeName,
           useGemini: true,
           message: welcomeFallback,
-          templateName: "team_broadcast",
-          templateParams: [employeeName, welcomeFallback]
+          templateName: "employee_welcome",
+          templateParams: [employeeName]
         })
       })
         .then(res => res.json())

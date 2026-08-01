@@ -57,7 +57,7 @@ Include friendly emojis. CRITICAL: Keep your entire output on ONE SINGLE LINE wi
             console.log(`[whatsapp global api] Gemini generated welcome message for ${employeeName}: "${cleanText}"`);
             finalMessage = cleanText;
             if (templateName && templateParams?.length) {
-              finalParams = [employeeName, cleanText];
+              finalParams = templateName === 'employee_welcome' ? [employeeName] : [employeeName, cleanText];
             }
           }
         } catch (err) {
