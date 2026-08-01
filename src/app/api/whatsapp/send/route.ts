@@ -150,7 +150,7 @@ export async function POST(request: Request) {
             type: 'template',
             template: {
               name: template.name,
-              language: { code: template.language || 'en_US' },
+              language: { code: template.language || (template.name === 'task_due_one_hour' ? 'en' : 'en_US') },
               components: [
                 {
                   type: 'body',
@@ -203,7 +203,45 @@ export async function POST(request: Request) {
       const data = await res.json();
       console.log('[whatsapp send api] Meta response:', data);
 
-       if (!res.ok) {
+      if (!res.ok) {
+        console.warn(`[whatsapp send api] Free-form text failed for ${formattedTo} (${res.status}), trying team_broadcast template fallback...`);
+        const cleanBody = body.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+        const fallbackRes = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${whatsappToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: formattedTo,
+            type: 'template',
+            template: {
+              name: 'team_broadcast',
+              language: { code: 'en_US' },
+              components: [
+                {
+                  type: 'body',
+                  parameters: [
+                    { type: 'text', text: employeeName },
+                    { type: 'text', text: cleanBody }
+                  ]
+                }
+              ]
+            }
+          })
+        });
+
+        const fallbackData = await fallbackRes.json();
+        console.log(`[whatsapp send api] Template fallback response for ${formattedTo}:`, fallbackData);
+
+        if (fallbackRes.ok) {
+          await triggerAdminAlertIfRequested();
+          await logMessageToDB();
+          return NextResponse.json({ success: true, result: fallbackData, method: 'template-fallback' }, { status: 200 });
+        }
+
         return NextResponse.json({ error: `Meta API error: ${res.status} ${JSON.stringify(data)}` }, { status: 500 });
       }
 

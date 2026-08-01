@@ -167,14 +167,15 @@ export async function GET(request: Request) {
               to: formattedTo,
               type: 'template',
               template: {
-                name: 'team_broadcast',
+                name: 'daily_status_update',
                 language: { code: 'en_US' },
                 components: [
                   {
                     type: 'body',
                     parameters: [
+                      { type: 'text', text: `${GREETINGS[schedule]},` },
                       { type: 'text', text: empName },
-                      { type: 'text', text: cleanMessageParam }
+                      { type: 'text', text: project }
                     ]
                   }
                 ]

@@ -119,14 +119,16 @@ export async function GET(request: Request) {
           to: formattedTo,
           type: 'template',
           template: {
-            name: 'team_broadcast',
-            language: { code: 'en_US' },
+            name: 'task_due_one_hour',
+            language: { code: 'en' },
             components: [
               {
                 type: 'body',
                 parameters: [
                   { type: 'text', text: employeeName },
-                  { type: 'text', text: reminderText }
+                  { type: 'text', text: task.title || 'Assigned Project' },
+                  { type: 'text', text: `${task.due_date || 'Today'} at ${task.due_time || '18:00'} (IST)` },
+                  { type: 'text', text: task.status || 'Pending' }
                 ]
               }
             ]

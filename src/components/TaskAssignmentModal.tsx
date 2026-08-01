@@ -170,11 +170,24 @@ export default function TaskAssignmentModal({
             `*Due Date:* ${formattedDate}${timeStr}\n` +
             `*Status:* ${status}`;
 
+          const empName = employee.fields?.name || employee.title || 'there';
+          const dueDateStr = `${formattedDate}${timeStr}`;
+          const descStr = description || 'No description provided.';
+
           try {
             const wRes = await fetch('/api/whatsapp/send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ to: phone, body: message, notifyAdmins: true }),
+              body: JSON.stringify({
+                to: phone,
+                body: message,
+                template: {
+                  name: 'task_assigned',
+                  language: 'en_US',
+                  parameters: [empName, title, descStr, dueDateStr]
+                },
+                notifyAdmins: false
+              }),
             });
             if (wRes.ok) notifSent++; else notifFailed++;
           } catch { notifFailed++; }

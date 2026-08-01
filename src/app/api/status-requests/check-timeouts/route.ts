@@ -30,7 +30,8 @@ async function sendWhatsApp(
 
       // 1a. Try template first (works outside 24-hour window)
       if (template?.name && template?.parameters) {
-        console.log(`[check-timeouts] Trying template "${template.name}" to:`, formattedTo);
+        const langCode = template.name === 'task_deadline_reached' ? 'en_US' : 'en';
+        console.log(`[check-timeouts] Trying template "${template.name}" (${langCode}) to:`, formattedTo);
         const tRes = await fetch(url, {
           method: 'POST',
           headers: { Authorization: `Bearer ${whatsappToken}`, 'Content-Type': 'application/json' },
@@ -41,7 +42,7 @@ async function sendWhatsApp(
             type: 'template',
             template: {
               name: template.name,
-              language: { code: 'en' },
+              language: { code: langCode },
               components: [{
                 type: 'body',
                 parameters: template.parameters.map(p => ({ type: 'text', text: p })),
@@ -217,7 +218,7 @@ export async function GET(request: Request) {
             `Please update your task status in the dashboard or request a deadline extension if you need more time.`;
 
           const ok = await sendWhatsApp(phone, freeFormMsg, {
-            name: 'task_deadline_passed',
+            name: 'task_deadline_reached',
             parameters: [name, task.title, deadlineStr, task.status],
           });
           if (ok) {
@@ -261,7 +262,7 @@ export async function GET(request: Request) {
             `⚡ Please wrap up your task or update its status in the dashboard.`;
 
           const ok = await sendWhatsApp(phone, freeFormMsg, {
-            name: 'task_due_reminder',
+            name: 'task_due_one_hour',
             parameters: [name, task.title, deadlineStr, task.status],
           });
           if (ok) {

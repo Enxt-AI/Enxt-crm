@@ -87,7 +87,7 @@ function buildMessage(
   );
 }
 
-async function sendWhatsApp(to: string, body: string): Promise<boolean> {
+async function sendWhatsApp(to: string, body: string, task?: Task, employeeName?: string, urgency?: string): Promise<boolean> {
   try {
     const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
     const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
@@ -110,6 +110,7 @@ async function sendWhatsApp(to: string, body: string): Promise<boolean> {
       const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
       console.log('[tasks/remind] Dispatching via Meta Cloud API to:', formattedTo);
       
+      // 1a. Try free-form text first (renders full emoji alert within 24h window)
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -129,8 +130,51 @@ async function sendWhatsApp(to: string, body: string): Promise<boolean> {
       });
 
       const data = await res.json();
-      console.log('[tasks/remind] Meta response:', data);
-      return res.ok;
+      console.log('[tasks/remind] Free-form text response:', data);
+      if (res.ok) return true;
+
+      // 1b. Template fallback if free-form text fails (outside 24-hour window)
+      console.warn('[tasks/remind] Free-form text failed, trying Meta utility template fallback...');
+      const templateName = urgency === 'overdue' ? 'task_deadline_reached' : 'task_due_one_hour';
+      const langCode = templateName === 'task_deadline_reached' ? 'en_US' : 'en';
+
+      const empNameStr = employeeName || 'Team Member';
+      const taskTitleStr = task?.title || 'Assigned Task';
+      const dateStr = task?.dueDate ? `${task.dueDate}${task.dueTime ? ` at ${task.dueTime}` : ''}` : 'Today';
+      const statusStr = task?.status || 'Pending';
+
+      const tRes = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${whatsappToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: formattedTo,
+          type: 'template',
+          template: {
+            name: templateName,
+            language: { code: langCode },
+            components: [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: empNameStr },
+                  { type: 'text', text: taskTitleStr },
+                  { type: 'text', text: dateStr },
+                  { type: 'text', text: statusStr },
+                ],
+              },
+            ],
+          },
+        }),
+      });
+
+      const tData = await tRes.json();
+      console.log('[tasks/remind] Template fallback response:', tData);
+      return tRes.ok;
     }
 
     // 2. Simulation fallback if Meta API is unconfigured
@@ -213,7 +257,7 @@ export async function GET(request: Request) {
 
         const name = emp.fields?.name || emp.title || 'there';
         const message = buildMessage(urgency, task, name);
-        const ok = await sendWhatsApp(phone, message);
+        const ok = await sendWhatsApp(phone, message, task, name, urgency);
 
         if (ok) {
           sentTo.push(name);
