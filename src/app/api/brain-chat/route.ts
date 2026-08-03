@@ -19,6 +19,7 @@ const compactDocument = (document: BrainDocument) => {
       id: document.id,
       type: document.type,
       name: fieldText(document, "name"),
+      role: fieldText(document, "role") || fieldText(document, "department"),
       status: fieldText(document, "status"),
       currentSalaryRaw: fieldText(document, "currentSalaryRaw"),
       monthlySalaryInr: fieldNumber(document, "monthlySalaryInr"),

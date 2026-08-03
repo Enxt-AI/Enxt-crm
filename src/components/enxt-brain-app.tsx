@@ -548,7 +548,8 @@ export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccoun
           offerLetterUrl: fields.offerLetterUrl || "",
           panCardUrl: fields.panCardUrl || "",
           aadhaarCardUrl: fields.aadhaarCardUrl || "",
-          bankDetailsUrl: fields.bankDetailsUrl || "",
+          role: fields.role || "",
+          department: fields.role || (document.fields?.department as string) || "Enxt AI",
           phone: fields.phone || ""
         };
 
@@ -692,8 +693,8 @@ export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccoun
         fields: {
           serialNo: `${current.filter(d => d.type === "employee").length + 1}`,
           name: employeeName,
-          role: "Team Member",
-          department: "Enxt AI",
+          role: fields.role || "Team Member",
+          department: fields.role || "Enxt AI",
           monthlySalaryInr,
           dateOfJoining: fields.dateOfJoining || new Date().toISOString().slice(0, 10),
           status: "Active",
@@ -1553,6 +1554,7 @@ function EmployeesView({
     setEditingEmployeeId(employee.id);
     setEditFields({
       name: asText(employee, "name"),
+      role: asText(employee, "role") || asText(employee, "department") || "Team Member",
       status: asText(employee, "status"),
       currentSalaryRaw: asText(employee, "currentSalaryRaw"),
       updatedStipendRaw: asText(employee, "updatedStipendRaw"),
@@ -1883,6 +1885,7 @@ function EmployeesView({
             <tr>
               <th>No.</th>
               <th>Name</th>
+              <th>Role</th>
               <th>Status</th>
               <th>Salary</th>
               <th>Joined</th>
@@ -1896,7 +1899,20 @@ function EmployeesView({
                 <td>{asText(employee, "serialNo")}</td>
                 <td>
                   <strong>{asText(employee, "name")}</strong>
-                  <span>{asText(employee, "department")}</span>
+                </td>
+                <td>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    fontWeight: 500,
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    color: '#059669',
+                    border: '1px solid rgba(16, 185, 129, 0.2)'
+                  }}>
+                    {asText(employee, "role") || asText(employee, "department") || "Team Member"}
+                  </span>
                 </td>
                 <td>
                   <StatusBadge tone={asText(employee, "status") === "Exited" ? "amber" : "green"}>
@@ -1952,6 +1968,7 @@ function EmployeesView({
             </div>
             <div className="employee-edit-grid">
               <EditableField label="Name" value={editFields.name} onChange={(value) => updateField("name", value)} />
+              <EditableField label="Role" value={editFields.role} onChange={(value) => updateField("role", value)} placeholder="e.g. Frontend Developer, Designer" />
               <label className="field-control">
                 <span>Status</span>
                 <select value={editFields.status} onChange={(event) => updateField("status", event.target.value)}>
