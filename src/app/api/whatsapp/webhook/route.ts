@@ -534,22 +534,79 @@ Your Guidelines:
                 return;
               }
 
-              // Send notification to assignee if they have a phone number
+              // Send notification to assignee using task_assigned Meta template
               if (assigneePhone) {
                 const formattedTo = assigneePhone.replace(/\D/g, '');
                 const cleanPhone = formattedTo.length === 10 ? `91${formattedTo}` : formattedTo;
-                
-                const assigneeMessage = 
-                  `📋 *New Task Assigned*\n\n` +
-                  `Hi ${assigneeName}!\n\n` +
-                  `Your manager has assigned you a new task:\n` +
-                  `*Title:* ${taskTitle}\n` +
-                  `*Description:* ${description}\n` +
-                  `*Due Date:* ${dueDate} at ${dueTime}\n` +
-                  `*Status:* Pending`;
+                const dueDateStr = `${dueDate}${dueTime ? ` at ${dueTime}` : ''}`;
+                const descStr = description || 'No description provided.';
 
-                // Send the WhatsApp notification
-                await replyToWhatsApp(cleanPhone, assigneeName, assigneeMessage);
+                const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
+                const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+
+                if (whatsappToken && phoneId && !whatsappToken.includes('your_meta_access_token')) {
+                  const metaUrl = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
+                  
+                  // 1. Try task_assigned template first (bypasses 24h window)
+                  console.log(`[whatsapp webhook bg-worker] Sending task_assigned template to ${cleanPhone}`);
+                  const tRes = await fetch(metaUrl, {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${whatsappToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      messaging_product: 'whatsapp',
+                      recipient_type: 'individual',
+                      to: cleanPhone,
+                      type: 'template',
+                      template: {
+                        name: 'task_assigned',
+                        language: { code: 'en_US' },
+                        components: [
+                          {
+                            type: 'body',
+                            parameters: [
+                              { type: 'text', text: assigneeName },
+                              { type: 'text', text: taskTitle },
+                              { type: 'text', text: descStr },
+                              { type: 'text', text: dueDateStr },
+                            ],
+                          },
+                        ],
+                      },
+                    }),
+                  });
+
+                  const tData = await tRes.json();
+                  console.log('[whatsapp webhook bg-worker] Template notify result:', tData);
+
+                  if (!tRes.ok) {
+                    // Fallback to free-form text if template fails
+                    console.warn('[whatsapp webhook bg-worker] Template failed, sending free-form text fallback');
+                    const assigneeMessage = 
+                      `📋 *New Task Assigned*\n\n` +
+                      `Hi ${assigneeName}!\n\n` +
+                      `Your manager has assigned you a new task:\n` +
+                      `*Title:* ${taskTitle}\n` +
+                      `*Description:* ${descStr}\n` +
+                      `*Due Date:* ${dueDateStr}\n` +
+                      `*Status:* Pending`;
+
+                    await replyToWhatsApp(cleanPhone, assigneeName, assigneeMessage);
+                  }
+                } else {
+                  const assigneeMessage = 
+                    `📋 *New Task Assigned*\n\n` +
+                    `Hi ${assigneeName}!\n\n` +
+                    `Your manager has assigned you a new task:\n` +
+                    `*Title:* ${taskTitle}\n` +
+                    `*Description:* ${descStr}\n` +
+                    `*Due Date:* ${dueDateStr}\n` +
+                    `*Status:* Pending`;
+
+                  await replyToWhatsApp(cleanPhone, assigneeName, assigneeMessage);
+                }
               }
 
               // Reply confirmation back to the Admin
