@@ -2073,20 +2073,22 @@ export function EditableField({
   value,
   onChange,
   protectedValue = false,
-  type = "text"
+  type = "text",
+  placeholder
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   protectedValue?: boolean;
   type?: string;
+  placeholder?: string;
 }) {
   return (
     <label className="field-control">
       <span>{label}</span>
       <input
         onChange={(event) => onChange(event.target.value)}
-        placeholder={protectedValue ? "Protected field" : ""}
+        placeholder={placeholder ?? (protectedValue ? "Protected field" : "")}
         type={type}
         value={value ?? ""}
       />
