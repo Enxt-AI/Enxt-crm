@@ -79,6 +79,39 @@ function cleanAndParseJSON(text: string) {
   return JSON.parse(cleaned);
 }
 
+function isMeaningfulStatusUpdate(text: string): { valid: boolean; reason?: string } {
+  if (!text) return { valid: false, reason: "Message is empty." };
+
+  const trimmed = text.trim();
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  
+  // Single letter, single digit, or extremely short text (< 3 chars)
+  if (trimmed.length < 3) {
+    return { valid: false, reason: "Update is too short. Please describe your project progress." };
+  }
+
+  // Single word checks for trivial/non-descriptive replies
+  if (words.length === 1) {
+    const singleWord = words[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    const trivialWords = [
+      'hi', 'hello', 'hey', 'ok', 'k', 'okay', 'yes', 'no', 'fine', 'cool', 'test', 'done',
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+      'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'thanks', 'thx', 'n/a', 'na'
+    ];
+    if (trivialWords.includes(singleWord)) {
+      return { valid: false, reason: `Single word "${trimmed}" is not a detailed project update.` };
+    }
+  }
+
+  // Ensure message has meaningful content (at least 5 alphanumeric characters or 2+ words)
+  const alphaNumericCount = (trimmed.match(/[a-zA-Z0-9]/g) || []).length;
+  if (alphaNumericCount < 5 && words.length < 2) {
+    return { valid: false, reason: "Please write a full sentence describing your progress." };
+  }
+
+  return { valid: true };
+}
+
 async function saveMessageToDB(from: string, employeeName: string, text: string, type: 'inbound' | 'outbound') {
   try {
     const { data, error } = await supabase
@@ -239,6 +272,21 @@ async function processWebhookPayload(payload: any) {
 
       if (pendingRequests && pendingRequests.length > 0) {
         const req = pendingRequests[0];
+
+        // Validate if the text is a meaningful status update
+        const checkUpdate = isMeaningfulStatusUpdate(textBody);
+        if (!checkUpdate.valid) {
+          console.warn(`[whatsapp webhook bg-worker] ⚠️ Insufficient status update from ${employeeName} ("${textBody}"): ${checkUpdate.reason}`);
+          await replyToWhatsApp(
+            from,
+            employeeName,
+            `⚠️ *Detailed Status Update Required*\n\n` +
+            `Hi ${employeeName}! Please provide a meaningful update describing your current project progress (e.g., "Completed API integration and tested database routes").\n\n` +
+            `Replies like "${textBody}" are not recorded as project status updates. Kindly reply with details of your work.`
+          );
+          return;
+        }
+
         const now = new Date().toISOString();
         
         console.log(`[whatsapp webhook bg-worker] Updating request ${req.id} for ${req.employee_name} with text: "${textBody}"`);
