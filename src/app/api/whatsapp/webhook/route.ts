@@ -360,9 +360,9 @@ async function processWebhookPayload(payload: any) {
       if (apiKey) {
         try {
           const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
-          const prompt = `You are ComBrain, an AI assistant for ComBrain. You are talking to a user whose phone number is not recognized in the employee database.
+          const prompt = `You are Enxt Brain, an AI assistant for Enxt. You are talking to a user whose phone number is not recognized in the employee database.
 The user sent you this message: "${textBody}"
-Reply to them in a helpful, professional, and concise manner. Let them know you are the ComBrain AI assistant.`;
+Reply to them in a helpful, professional, and concise manner. Let them know you are the Enxt Brain AI assistant.`;
 
           const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
             method: "POST",
@@ -380,7 +380,7 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
         } catch (error) { console.error('[whatsapp webhook bg-worker] Error calling Gemini:', error); }
       }
 
-      await replyToWhatsApp(from, employeeName, `Hi! I am ComBrain. Your phone number is not currently associated with any employee record in our system.`);
+      await replyToWhatsApp(from, employeeName, `Hi! I am Enxt Brain. Your phone number is not currently associated with any employee record in our system.`);
       return;
     }
 
@@ -433,7 +433,7 @@ Reply to them in a helpful, professional, and concise manner. Let them know you 
             ? employeeTasks.map((t: any) => `- ${t.title} (Status: ${t.status}, Current Deadline: ${t.due_date} at ${t.due_time || '18:00'})`).join('\n')
             : 'No active tasks.';
 
-          const prompt = isAdmin ? `You are ComBrain, the highly intelligent and friendly AI assistant for ComBrain. 
+          const prompt = isAdmin ? `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
 You are speaking to the Admin/Manager named ${employeeName}.
 
 Context:
@@ -452,7 +452,7 @@ Your Guidelines:
 
    If they ARE assigning a task, set isTaskAssignment to true and fill in assigneeName, taskTitle, description, dueDate, dueTime, and priority.
 2. If they are NOT assigning a task, set isTaskAssignment to false and write a friendly, professional response in conversationalReply.
-` : `You are ComBrain, the highly intelligent and friendly AI assistant for ComBrain. 
+` : `You are Enxt Brain, the highly intelligent and friendly AI assistant for Enxt. 
 You are having a conversation with an employee named ${employeeName}.
 
 Context:
@@ -854,4 +854,3 @@ async function replyToWhatsApp(to: string, employeeName: string, message: string
     console.error('[whatsapp webhook] Dispatch reply request failed:', err);
   }
 }
-

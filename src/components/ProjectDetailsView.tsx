@@ -456,7 +456,7 @@ export default function ProjectDetailsView({
       title,
       date,
       time,
-      participants: [project.fields.owner || "Rohan Iyer", "Alice Smith", "Bob Johnson"],
+      participants: [project.fields.owner || "Rohan Iyer", "YUG", "Alok"],
       summary,
       actionItems: ["Proceed with milestones"],
       nextMeetingDate: date

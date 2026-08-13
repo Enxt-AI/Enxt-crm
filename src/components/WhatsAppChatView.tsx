@@ -261,7 +261,7 @@ export default function WhatsAppChatView() {
                         ) : (
                           <>
                             <Bot size={10} />
-                            <span>ComBrain AI (Admin)</span>
+                            <span>EnxtBrain AI (Admin)</span>
                           </>
                         )}
                       </div>
@@ -310,4 +310,3 @@ export default function WhatsAppChatView() {
     </div>
   );
 }
-

@@ -74,6 +74,198 @@ const lead = (
 
 const baseBrainDocuments: BrainDocument[] = [
   ...sheetEmployeeDocuments,
+  /*
+  employee(
+    "emp-aisha-menon",
+    "Aisha Menon - Head of Operations",
+    {
+      name: "Aisha Menon",
+      role: "Head of Operations",
+      department: "Operations",
+      monthlySalaryInr: 220000,
+      dateOfJoining: "2023-07-10",
+      status: "Active",
+      pan: "AXIPM4821K",
+      aadhaar: "4382 9124 5501",
+      email: "aisha.menon@enxt.ai",
+      phone: "+91 90000 11001",
+      location: "Bengaluru",
+      reportingTo: "Founder"
+    },
+    `Aisha owns operating cadence, internal process hygiene, vendor coordination, and founder follow-through. She maintains weekly execution reviews, project owner check-ins, invoice reminders, and hiring coordination. Current focus is turning scattered updates into repeatable operating rituals for Enxt Brain.`
+  ),
+  employee(
+    "emp-rohan-iyer",
+    "Rohan Iyer - AI Engineer",
+    {
+      name: "Rohan Iyer",
+      role: "AI Engineer",
+      department: "Engineering",
+      monthlySalaryInr: 180000,
+      dateOfJoining: "2024-01-15",
+      status: "Active",
+      pan: "BDQPI1934L",
+      aadhaar: "7251 4902 1188",
+      email: "rohan.iyer@enxt.ai",
+      phone: "+91 90000 11002",
+      location: "Chennai",
+      reportingTo: "Nikhil Verma"
+    },
+    `Rohan builds retrieval, prompt orchestration, and model evaluation workflows. He is strongest with Python, LangChain-style pipelines, embeddings, and API integration. Current assignments include Pinecone schema tests and retrieval quality checks for document-grounded answers.`
+  ),
+  employee(
+    "emp-meera-kapoor",
+    "Meera Kapoor - Product Designer",
+    {
+      name: "Meera Kapoor",
+      role: "Product Designer",
+      department: "Product",
+      monthlySalaryInr: 155000,
+      dateOfJoining: "2023-11-06",
+      status: "Active",
+      pan: "CQWPK6421J",
+      aadhaar: "2198 3304 7762",
+      email: "meera.kapoor@enxt.ai",
+      phone: "+91 90000 11003",
+      location: "Mumbai",
+      reportingTo: "Founder"
+    },
+    `Meera designs dashboards, CRM flows, document review surfaces, and founder-facing chat experiences. She is responsible for making dense operational data readable without turning the product into a marketing page.`
+  ),
+  employee(
+    "emp-karan-shah",
+    "Karan Shah - Full Stack Developer",
+    {
+      name: "Karan Shah",
+      role: "Full Stack Developer",
+      department: "Engineering",
+      monthlySalaryInr: 165000,
+      dateOfJoining: "2024-02-01",
+      status: "Active",
+      pan: "DLMPS9351Q",
+      aadhaar: "6632 1188 9041",
+      email: "karan.shah@enxt.ai",
+      phone: "+91 90000 11004",
+      location: "Ahmedabad",
+      reportingTo: "Nikhil Verma"
+    },
+    `Karan owns Next.js implementation, API routes, authentication, database integration, and deployability. He is the primary developer for internal tools and founder dashboards.`
+  ),
+  employee(
+    "emp-nikhil-verma",
+    "Nikhil Verma - Lead ML Engineer",
+    {
+      name: "Nikhil Verma",
+      role: "Lead ML Engineer",
+      department: "Engineering",
+      monthlySalaryInr: 190000,
+      dateOfJoining: "2023-09-18",
+      status: "Active",
+      pan: "EAVPV7108D",
+      aadhaar: "8871 4409 1206",
+      email: "nikhil.verma@enxt.ai",
+      phone: "+91 90000 11005",
+      location: "Hyderabad",
+      reportingTo: "Founder"
+    },
+    `Nikhil leads model strategy, evaluation standards, data privacy reviews, and production AI architecture. His current focus is SLM routing, document mutation safety, and quality gates before AI-generated changes are applied.`
+  ),
+  employee(
+    "emp-priya-nair",
+    "Priya Nair - Sales Lead",
+    {
+      name: "Priya Nair",
+      role: "Sales Lead",
+      department: "Sales",
+      monthlySalaryInr: 145000,
+      dateOfJoining: "2024-03-12",
+      status: "Active",
+      pan: "FJRPN2944M",
+      aadhaar: "3401 2088 5510",
+      email: "priya.nair@enxt.ai",
+      phone: "+91 90000 11006",
+      location: "Kochi",
+      reportingTo: "Founder"
+    },
+    `Priya manages inbound leads, qualification, follow-ups, proposal coordination, and CRM hygiene. Her pipeline focus is mid-market AI automation projects in healthcare, retail, and professional services.`
+  ),
+  employee(
+    "emp-sanjay-rao",
+    "Sanjay Rao - Customer Success Manager",
+    {
+      name: "Sanjay Rao",
+      role: "Customer Success Manager",
+      department: "Customer Success",
+      monthlySalaryInr: 130000,
+      dateOfJoining: "2024-04-08",
+      status: "Active",
+      pan: "GQRPR5502H",
+      aadhaar: "9027 6610 4381",
+      email: "sanjay.rao@enxt.ai",
+      phone: "+91 90000 11007",
+      location: "Pune",
+      reportingTo: "Aisha Menon"
+    },
+    `Sanjay owns onboarding, adoption tracking, renewal risk notes, meeting summaries, and client satisfaction follow-through. He keeps account context current for the founder.`
+  ),
+  employee(
+    "emp-kavya-singh",
+    "Kavya Singh - HR and Finance Executive",
+    {
+      name: "Kavya Singh",
+      role: "HR and Finance Executive",
+      department: "People",
+      monthlySalaryInr: 95000,
+      dateOfJoining: "2024-06-03",
+      status: "Active",
+      pan: "HSTPS3104C",
+      aadhaar: "5504 2918 3370",
+      email: "kavya.singh@enxt.ai",
+      phone: "+91 90000 11008",
+      location: "Delhi",
+      reportingTo: "Aisha Menon"
+    },
+    `Kavya maintains employee documents, payroll notes, invoice documentation, offer letters, policy acknowledgements, and monthly founder reports.`
+  ),
+  employee(
+    "emp-imran-qureshi",
+    "Imran Qureshi - Data Engineer",
+    {
+      name: "Imran Qureshi",
+      role: "Data Engineer",
+      department: "Engineering",
+      monthlySalaryInr: 160000,
+      dateOfJoining: "2024-05-20",
+      status: "Active",
+      pan: "JXYPQ8912N",
+      aadhaar: "7166 4092 8803",
+      email: "imran.qureshi@enxt.ai",
+      phone: "+91 90000 11009",
+      location: "Lucknow",
+      reportingTo: "Nikhil Verma"
+    },
+    `Imran manages data extraction, cleaning, schema mapping, vector ingestion prep, and migration utilities. He is accountable for moving client documents into reliable searchable corpora.`
+  ),
+  employee(
+    "emp-devika-arora",
+    "Devika Arora - Prompt Engineer",
+    {
+      name: "Devika Arora",
+      role: "Prompt Engineer",
+      department: "AI Delivery",
+      monthlySalaryInr: 125000,
+      dateOfJoining: "2025-01-09",
+      status: "Probation",
+      pan: "KLPPA4107R",
+      aadhaar: "1088 7642 3125",
+      email: "devika.arora@enxt.ai",
+      phone: "+91 90000 11010",
+      location: "Jaipur",
+      reportingTo: "Rohan Iyer"
+    },
+    `Devika creates prompt libraries, evaluation examples, response style guides, and project-specific AI behavior notes. She is currently building the founder tone and CRM answer templates for Enxt Brain.`
+  ),
+  */
   project(
     "proj-talentpulse",
     "TalentPulse HR Copilot",
@@ -270,7 +462,7 @@ Success metric: Reduce compliance lookup time by 50 percent and improve audit pr
     "proj-founder-ops",
     "Founder Ops Copilot",
     {
-      client: "Internal - ComBrain AI",
+      client: "Internal - Enxt AI",
       phase: "Prototype",
       owner: "Aisha Menon",
       health: "Green",
@@ -294,7 +486,7 @@ Success metric: The founder can ask operational questions and update company rec
     "proj-lead-scoring",
     "Lead Scoring Engine",
     {
-      client: "Internal - ComBrain AI",
+      client: "Internal - Enxt AI",
       phase: "Planning",
       owner: "Priya Nair",
       health: "Green",
@@ -494,7 +686,7 @@ Success metric: Help sales spend more time on the top 20 percent of opportunitie
       interest: "Demand planning and procurement signals",
       nextAction: "Clarify procurement integration cost."
     },
-    `VectorFoods has a serious demand planning need and is comparing ComBrain AI with a traditional analytics vendor. Win path depends on speed, explainability, and lower implementation burden.`
+    `VectorFoods has a serious demand planning need and is comparing Enxt AI with a traditional analytics vendor. Win path depends on speed, explainability, and lower implementation burden.`
   ),
   lead(
     "lead-eduloop",
@@ -577,20 +769,20 @@ Success metric: Help sales spend more time on the top 20 percent of opportunitie
     `Riverline wants plant technicians to ask questions over maintenance SOPs and machine manuals. Needs offline-friendly deployment discussion and clear permissioning.`
   ),
   {
-    id: "system-combrain-architecture",
+    id: "system-enxt-brain-architecture",
     type: "system",
-    title: "ComBrain Architecture Note",
+    title: "Enxt Brain Architecture Note",
     status: "Draft",
     owner: "Founder Office",
     updatedAt: today,
     tags: ["architecture", "pinecone", "document-store", "write-mode"],
     fields: {
-      product: "ComBrain",
+      product: "Enxt Brain",
       principle: "Documents are the source of truth",
       futureVectorDb: "Pinecone",
       aiWritePolicy: "Proposal, review, approval, audit"
     },
-    body: `ComBrain is a document-native company brain. Employees, projects, clients, leads, policies, meetings, and founder notes should all exist as documents with structured metadata.
+    body: `Enxt Brain is a document-native company brain. Employees, projects, clients, leads, policies, meetings, and founder notes should all exist as documents with structured metadata.
 
 The UI can present these documents as CRM boards, employee tables, project dashboards, and chat context. The AI layer should retrieve relevant documents, answer with citations, and propose edits when write mode is enabled.
 
@@ -612,7 +804,7 @@ export const initialMockSubscriptions: BrainDocument[] = [
       vendor: "OpenAI Inc.",
       website: "https://openai.com",
       category: "AI Tools",
-      description: "LLM API access for GPT-4o, GPT-4, and embeddings for ComBrain product development.",
+      description: "LLM API access for GPT-4o, GPT-4, and embeddings for Enxt Brain product development.",
       billingCycle: "Monthly",
       currency: "USD",
       cost: 850,
@@ -624,11 +816,11 @@ export const initialMockSubscriptions: BrainDocument[] = [
       owner: "Rohan Iyer",
       department: "Engineering",
       paymentMethod: "Corporate Visa - 4821",
-      billingEmail: "engineering@combrain.com",
+      billingEmail: "engineering@enxt.ai",
       autoRenewal: true,
       status: "Active"
     },
-    body: "LLM API access for GPT-4o, GPT-4, and embeddings for ComBrain product development."
+    body: "LLM API access for GPT-4o, GPT-4, and embeddings for Enxt Brain product development."
   },
   {
     id: "sub-higgsfield",
@@ -655,7 +847,7 @@ export const initialMockSubscriptions: BrainDocument[] = [
       owner: "Priya Nair",
       department: "Marketing",
       paymentMethod: "Corporate Visa - 4821",
-      billingEmail: "marketing@combrain.com",
+      billingEmail: "marketing@enxt.ai",
       autoRenewal: true,
       status: "Due Soon"
     },
@@ -686,7 +878,7 @@ export const initialMockSubscriptions: BrainDocument[] = [
       owner: "Rohan Iyer",
       department: "Engineering",
       paymentMethod: "Corporate Visa - 4821",
-      billingEmail: "finance@combrain.com",
+      billingEmail: "finance@enxt.ai",
       autoRenewal: false,
       status: "Expired"
     },
@@ -717,7 +909,7 @@ export const initialMockSubscriptions: BrainDocument[] = [
       owner: "Aisha Menon",
       department: "HR & Admin",
       paymentMethod: "Auto Debit - HDFC Bank",
-      billingEmail: "hr@combrain.com",
+      billingEmail: "hr@enxt.ai",
       autoRenewal: true,
       status: "Renewal Needed"
     },
@@ -748,7 +940,7 @@ export const initialMockSubscriptions: BrainDocument[] = [
       owner: "Rohan Iyer",
       department: "Engineering",
       paymentMethod: "Corporate Visa - 4821",
-      billingEmail: "engineering@combrain.com",
+      billingEmail: "engineering@enxt.ai",
       autoRenewal: true,
       status: "Active"
     },
@@ -764,4 +956,3 @@ export const brainDocuments: BrainDocument[] = [
 
 export const getDocumentsByType = (type: BrainDocument["type"], documents = brainDocuments) =>
   documents.filter((document) => document.type === type);
-

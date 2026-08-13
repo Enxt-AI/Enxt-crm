@@ -463,7 +463,7 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
                     autoComplete="off"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="manager@combrain.com"
+                    placeholder="manager@enxtbrain.com"
                     style={{ width: "100%", padding: "9px 12px", background: "var(--surface, rgba(0,0,0,0.03))", border: "1px solid var(--line)", borderRadius: "8px", color: "var(--ink)", fontSize: "0.88rem", outline: "none", boxSizing: "border-box", fontWeight: 500 }}
                   />
                 </div>
@@ -542,7 +542,7 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
               {/* Grouped Permission Checklist Card */}
               <div style={{ background: "var(--surface, rgba(0,0,0,0.02))", border: "1px solid var(--line)", borderRadius: "14px", padding: "16px", maxHeight: "320px", overflowY: "auto" }}>
                 <span style={{ display: "block", fontSize: "0.78rem", fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>
-                  COMBRAIN MODULE PERMISSIONS
+                  ENXTBRAIN MODULE PERMISSIONS
                 </span>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -576,7 +576,7 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
                             {m.label}
                           </strong>
                           <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 500 }}>
-                            Manage {m.label.toLowerCase()} in COMBRAIN panel
+                            Manage {m.label.toLowerCase()} in EnxtBrain panel
                           </span>
                         </div>
                       </div>
@@ -665,4 +665,3 @@ export function ManagersView({ currentUser, onRefreshApp }: ManagersViewProps) {
     </div>
   );
 }
-

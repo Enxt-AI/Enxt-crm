@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       user: userSession,
     });
 
-    response.cookies.set('combrain_session', JSON.stringify(userSession), {
+    response.cookies.set('enxt_session', JSON.stringify(userSession), {
       httpOnly: false,
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -84,4 +84,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err?.message || 'Authentication error' }, { status: 500 });
   }
 }
-

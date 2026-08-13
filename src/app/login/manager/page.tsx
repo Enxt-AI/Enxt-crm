@@ -34,7 +34,7 @@ export default function ManagerLoginPage() {
 
       // Store in localStorage for instant client access and hard redirect
       if (typeof window !== "undefined") {
-        localStorage.setItem("combrain_user", JSON.stringify(data.user));
+        localStorage.setItem("enxt_user", JSON.stringify(data.user));
       }
       window.location.href = "/";
     } catch (err: any) {
@@ -87,12 +87,12 @@ export default function ManagerLoginPage() {
                 <input
                   type="email"
                   required
-                  name="combrain_mgr_email_field"
-                  id="combrain_mgr_email_field"
+                  name="enxt_mgr_email_field"
+                  id="enxt_mgr_email_field"
                   autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="manager@combrain.com"
+                  placeholder="manager@enxtbrain.com"
                   style={{ width: "100%", padding: "12px 14px 12px 42px", background: "var(--surface, rgba(0,0,0,0.03))", border: "1px solid var(--line)", borderRadius: "10px", color: "var(--ink)", fontSize: "0.9rem", outline: "none", boxSizing: "border-box", fontWeight: 500 }}
                 />
               </div>
@@ -105,8 +105,8 @@ export default function ManagerLoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  name="combrain_mgr_password_field"
-                  id="combrain_mgr_password_field"
+                  name="enxt_mgr_password_field"
+                  id="enxt_mgr_password_field"
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -175,4 +175,3 @@ export default function ManagerLoginPage() {
     </main>
   );
 }
-

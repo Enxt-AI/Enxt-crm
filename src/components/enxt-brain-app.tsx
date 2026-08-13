@@ -157,7 +157,7 @@ function AnimatedValue({ value }: { value: string | number }) {
 }
 
 const leadStages = ["Old Leads", "Contacts", "Proposal", "Project Started", "Completed"] as const;
-export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount | null }) {
+export default function EnxtBrainApp({ currentUser }: { currentUser?: UserAccount | null }) {
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [showProjectCalendar, setShowProjectCalendar] = useState(false);
@@ -224,7 +224,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
     fetch("/api/documents", { cache: "no-store" })
       .then((res) => {
         if (!res.ok) {
-          console.warn("[ComBrain] API returned", res.status, "- falling back to local data");
+          console.warn("[EnxtBrain] API returned", res.status, "- falling back to local data");
           return null;
         }
         return res.json();
@@ -234,15 +234,15 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           setDocuments(data);
           setLoadSuccess(true);
           setDbSyncStatus("saved");
-          console.log("[ComBrain] Loaded", data.length, "documents from database");
+          console.log("[EnxtBrain] Loaded", data.length, "documents from database");
         } else {
-          console.warn("[ComBrain] No valid data from API, using local documents");
+          console.warn("[EnxtBrain] No valid data from API, using local documents");
           setLoadSuccess(true);
           setDbSyncStatus("saved");
         }
       })
       .catch((err) => {
-        console.error("[ComBrain] Failed to load documents from server", err);
+        console.error("[EnxtBrain] Failed to load documents from server", err);
         setDbSyncStatus("error");
       })
       .finally(() => {
@@ -265,7 +265,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
       id: "intro-brain",
       role: "brain",
       content:
-        "ComBrain sees 16 employees, 10 AI projects, 0 clients, and 40 leads. Employee docs and the CRM pipeline are ready to search, edit, and update."
+        "Enxt Brain sees 16 employees, 10 AI projects, 0 clients, and 40 leads. Employee docs and the CRM pipeline are ready to search, edit, and update."
     }
   ]);
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
@@ -292,7 +292,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
   useEffect(() => {
     if (isInitializing || !loadSuccess) return; // Don't save during initial load or if load failed
 
-    console.log("[ComBrain] Saving", documents.length, "documents to database...");
+    console.log("[EnxtBrain] Saving", documents.length, "documents to database...");
     setDbSyncStatus("saving");
     fetch("/api/documents", {
       method: "POST",
@@ -305,10 +305,10 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
       })
       .then((data) => {
         if (data.success) {
-          console.log("[ComBrain] ✓ Database saved successfully");
+          console.log("[EnxtBrain] ✓ Database saved successfully");
           setDbSyncStatus("saved");
         } else {
-          console.error("[ComBrain] ✗ Save returned unexpected response", data);
+          console.error("[EnxtBrain] ✗ Save returned unexpected response", data);
           setDbSyncStatus("error");
         }
       })
@@ -549,7 +549,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           panCardUrl: fields.panCardUrl || "",
           aadhaarCardUrl: fields.aadhaarCardUrl || "",
           role: fields.role || "",
-          department: fields.role || (document.fields?.department as string) || "ComBrain AI",
+          department: fields.role || (document.fields?.department as string) || "Enxt AI",
           phone: fields.phone || ""
         };
 
@@ -565,7 +565,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           tags: ["employee", status, "portal-editable"],
           updatedAt: new Date().toISOString().slice(0, 10),
           fields: updatedFields,
-          body: `${cleanBody}\n\nPortal update:\n- Employee record edited from ComBrain on ${new Date()
+          body: `${cleanBody}\n\nPortal update:\n- Employee record edited from Enxt Brain on ${new Date()
             .toISOString()
             .slice(0, 10)}.`
         };
@@ -575,7 +575,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
     // Auto-send welcome WhatsApp message ONLY when phone number is added/changed (via Gemini AI)
     if (phoneChanged) {
       const employeeName = fields.name || (existingDoc?.fields?.name as string) || "Team Member";
-      const welcomeFallback = `Welcome to ComBrain! 🎉 Your phone number has been updated on the ComBrain portal. You can now receive task updates and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
+      const welcomeFallback = `Welcome to Enxt! 🎉 Your phone number has been updated on the Enxt Brain portal. You can now receive task updates and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
       fetch("/api/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -590,12 +590,12 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            console.log(`[ComBrain] ✅ Gemini welcome message sent to ${employeeName} (${newPhone}) — phone updated`);
+            console.log(`[EnxtBrain] ✅ Gemini welcome message sent to ${employeeName} (${newPhone}) — phone updated`);
           } else {
-            console.warn(`[ComBrain] ⚠️ Gemini welcome message failed for ${employeeName}:`, data);
+            console.warn(`[EnxtBrain] ⚠️ Gemini welcome message failed for ${employeeName}:`, data);
           }
         })
-        .catch(err => console.error(`[ComBrain] ❌ Error sending welcome message to ${employeeName}:`, err));
+        .catch(err => console.error(`[EnxtBrain] ❌ Error sending welcome message to ${employeeName}:`, err));
     }
   };
 
@@ -624,7 +624,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           status: fields.phase || document.status,
           updatedAt: new Date().toISOString().slice(0, 10),
           fields: updatedFields,
-          body: `${cleanBody}\n\nPortal update:\n- Project record edited from ComBrain on ${new Date()
+          body: `${cleanBody}\n\nPortal update:\n- Project record edited from Enxt Brain on ${new Date()
             .toISOString()
             .slice(0, 10)}.`
         };
@@ -694,7 +694,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           serialNo: `${current.filter(d => d.type === "employee").length + 1}`,
           name: employeeName,
           role: fields.role || "Team Member",
-          department: fields.role || "ComBrain AI",
+          department: fields.role || "Enxt AI",
           monthlySalaryInr,
           dateOfJoining: fields.dateOfJoining || new Date().toISOString().slice(0, 10),
           status: "Active",
@@ -714,7 +714,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           aadhaarCardUrl: fields.aadhaarCardUrl || "",
           bankDetailsUrl: fields.bankDetailsUrl || ""
         },
-        body: `Portal update:\n- New employee record created from ComBrain on ${new Date().toISOString().slice(0, 10)}.`
+        body: `Portal update:\n- New employee record created from Enxt Brain on ${new Date().toISOString().slice(0, 10)}.`
       };
       
       return [...current, newEmployee];
@@ -722,7 +722,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
 
     // Auto-send welcome WhatsApp message to the new employee via Gemini AI
     if (employeePhone) {
-      const welcomeFallback = `Welcome to ComBrain! 🎉 You have been added to the ComBrain portal. You can now receive task updates, reminders, and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
+      const welcomeFallback = `Welcome to Enxt! 🎉 You have been added to the Enxt Brain portal. You can now receive task updates, reminders, and communicate with your team via this WhatsApp channel. Reply with "Hi" to get started!`;
       fetch("/api/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -737,12 +737,12 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            console.log(`[ComBrain] ✅ Gemini welcome message sent to ${employeeName} (${employeePhone})`);
+            console.log(`[EnxtBrain] ✅ Gemini welcome message sent to ${employeeName} (${employeePhone})`);
           } else {
-            console.warn(`[ComBrain] ⚠️ Gemini welcome message failed for ${employeeName}:`, data);
+            console.warn(`[EnxtBrain] ⚠️ Gemini welcome message failed for ${employeeName}:`, data);
           }
         })
-        .catch(err => console.error(`[ComBrain] ❌ Error sending welcome message to ${employeeName}:`, err));
+        .catch(err => console.error(`[EnxtBrain] ❌ Error sending welcome message to ${employeeName}:`, err));
     }
   };
 
@@ -767,7 +767,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           interest: fields.projectDetails,
           nextAction: fields.nextSteps
         },
-        body: `Portal update:\n- New lead record created from ComBrain on ${new Date().toISOString().slice(0, 10)}.`
+        body: `Portal update:\n- New lead record created from Enxt Brain on ${new Date().toISOString().slice(0, 10)}.`
       };
       
       return [...current, newLead];
@@ -915,7 +915,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           tags: ["lead", stage, "portal-editable"],
           updatedAt: new Date().toISOString().slice(0, 10),
           fields: updatedFields,
-          body: `${document.body}\n\nPortal update:\n- Lead record edited from ComBrain on ${new Date()
+          body: `${document.body}\n\nPortal update:\n- Lead record edited from Enxt Brain on ${new Date()
             .toISOString()
             .slice(0, 10)}.`
         };
@@ -983,7 +983,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
             <div className="brand-mark-mini">
               <Bot size={18} aria-hidden="true" />
             </div>
-            <span className="brand-name">ComBrain</span>
+            <span className="brand-name">Enxt Brain</span>
           </div>
 
           {/* Center: Navigation Links with sliding background highlight */}
@@ -1290,10 +1290,10 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
 
           <form className="chat-form" onSubmit={askBrain}>
             <input
-              aria-label="Ask ComBrain"
+              aria-label="Ask Enxt Brain"
               disabled={isBrainThinking}
               onChange={(event) => setChatInput(event.target.value)}
-              placeholder={isBrainThinking ? "ComBrain is thinking" : "Ask or request a change"}
+              placeholder={isBrainThinking ? "Enxt Brain is thinking" : "Ask or request a change"}
               value={chatInput}
             />
             <button className="send-button" disabled={isBrainThinking} title="Send" type="submit">
@@ -1339,7 +1339,7 @@ export default function ComBrainApp({ currentUser }: { currentUser?: UserAccount
           onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
           title="Toggle AI Chat"
         >
-          <span className="fab-tooltip">Ask ComBrain</span>
+          <span className="fab-tooltip">Ask Enxt Brain</span>
           <span className="fab-icon-wrapper">
             {isAiPanelOpen ? <X size={24} /> : <BotMessageSquare size={24} />}
           </span>
@@ -1618,11 +1618,11 @@ function EmployeesView({
 
     let message: string;
     if (missingDocs.length > 0) {
-      message = `Hi ${name}, this is an automated reminder from ComBrain AI HR. We are missing the following documents in your profile:\n\n- ${missingDocs.join(
+      message = `Hi ${name}, this is an automated reminder from Enxt AI HR. We are missing the following documents in your profile:\n\n- ${missingDocs.join(
         "\n- "
       )}\n\nPlease submit them to the HR portal at your earliest convenience. Thank you!`;
     } else {
-      message = `Hi ${name}, your ComBrain AI HR profile is fully complete. Thank you!`;
+      message = `Hi ${name}, your Enxt AI HR profile is fully complete. Thank you!`;
     }
 
     setWhatsappToast({ message: `Sending to ${name}...`, type: "success" });
@@ -1682,9 +1682,9 @@ function EmployeesView({
           return `${idx + 1}. *${title}*\n   Phase: ${phase} | Progress: ${progress}%\n   Deadline: ${dueDate}`;
         }).join("\n\n");
 
-        message = `Hi ${name}, here is your automated project update from ComBrain AI:\n\n${projectLines}\n\nPlease ensure deadlines are on track. Reach out if you need support!`;
+        message = `Hi ${name}, here is your automated project update from Enxt AI:\n\n${projectLines}\n\nPlease ensure deadlines are on track. Reach out if you need support!`;
       } else {
-        message = `Hi ${name}, this is an automated update from ComBrain AI. You currently have no active projects assigned in the system. Contact your manager for new assignments.`;
+        message = `Hi ${name}, this is an automated update from Enxt AI. You currently have no active projects assigned in the system. Contact your manager for new assignments.`;
       }
 
       try {
@@ -1727,7 +1727,7 @@ function EmployeesView({
       
       setWhatsappToast({ message: `Broadcasting message to ${name} (${i + 1}/${activeEmployees.length})...`, type: "loading" });
 
-      const message = `Hi ${name}, a message from ComBrain AI:\n\n${broadcastMessage}\n\n— The ComBrain AI Team`;
+      const message = `Hi ${name}, a message from Enxt AI:\n\n${broadcastMessage}\n\n— The Enxt AI Team`;
 
       try {
         const response = await fetch("/api/whatsapp", {
@@ -3884,4 +3884,3 @@ function findTargetDocument(prompt: string, documents: BrainDocument[]) {
     documents[0]
   );
 }
-

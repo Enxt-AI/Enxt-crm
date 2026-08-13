@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('combrain_session')?.value;
+    const sessionCookie = cookieStore.get('enxt_session')?.value;
 
     if (!sessionCookie) {
       return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
@@ -16,4 +16,3 @@ export async function GET() {
     return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
   }
 }
-
