@@ -16,7 +16,7 @@ export const INITIAL_USERS: UserAccount[] = [
   {
     id: "usr-admin-01",
     name: "Super Admin",
-    email: "admin@enxtbrain.com",
+    email: "admin@combrain.com",
     password: "Admin@123",
     role: "superadmin",
     department: "Executive",
@@ -38,7 +38,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: "log-102",
     action: "Manager Created",
-    performed_by: "admin@enxtbrain.com",
+    performed_by: "admin@combrain.com",
     target_user_id: "usr-rahul-02",
     details: "Created manager Rahul Verma for Engineering department.",
     created_at: "2026-02-10T10:30:00.000Z"
@@ -46,7 +46,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: "log-103",
     action: "Permissions Updated",
-    performed_by: "admin@enxtbrain.com",
+    performed_by: "admin@combrain.com",
     target_user_id: "usr-amit-03",
     details: "Assigned Sales & CRM Manager Preset permissions to Amit Sharma.",
     created_at: "2026-02-12T14:15:00.000Z"
@@ -84,3 +84,4 @@ export function getDefaultPermissionsForRole(presetName: "all" | "readonly" | "p
     return { module_key: m.key, can_view: true, can_create: false, can_edit: false, can_delete: false };
   });
 }
+

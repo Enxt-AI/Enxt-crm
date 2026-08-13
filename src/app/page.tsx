@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import EnxtBrainApp from "../components/enxt-brain-app";
+import ComBrainApp from "../components/combrain-app";
 import { UserAccount } from "../lib/types";
 import { ShieldCheck, UserCheck, Sparkles, ArrowRight, Brain, CheckCircle2, Lock, LogOut, ExternalLink } from "lucide-react";
 
@@ -13,7 +13,7 @@ export default function Home() {
   useEffect(() => {
     async function checkAuth() {
       if (typeof window !== "undefined") {
-        const stored = localStorage.getItem("enxt_user");
+        const stored = localStorage.getItem("combrain_user");
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
@@ -30,7 +30,7 @@ export default function Home() {
         if (res.ok && data.authenticated && data.user) {
           setCurrentUser(data.user);
           if (typeof window !== "undefined") {
-            localStorage.setItem("enxt_user", JSON.stringify(data.user));
+            localStorage.setItem("combrain_user", JSON.stringify(data.user));
           }
         }
       } catch (err) {
@@ -42,7 +42,7 @@ export default function Home() {
     checkAuth();
   }, []);
 
-  // Strict Login Requirement: Render EnxtBrainApp ONLY if user is logged in
+  // Strict Login Requirement: Render ComBrainApp ONLY if user is logged in
   if (currentUser) {
     return (
       <div>
@@ -59,7 +59,7 @@ export default function Home() {
             type="button"
             onClick={async () => {
               if (typeof window !== "undefined") {
-                localStorage.removeItem("enxt_user");
+                localStorage.removeItem("combrain_user");
               }
               await fetch("/api/auth/logout", { method: "POST" });
               setCurrentUser(null);
@@ -71,7 +71,7 @@ export default function Home() {
           </button>
         </div>
 
-        <EnxtBrainApp currentUser={currentUser} />
+        <ComBrainApp currentUser={currentUser} />
       </div>
     );
   }
@@ -89,7 +89,7 @@ export default function Home() {
             <Brain size={22} style={{ color: "#ffffff" }} />
           </div>
           <div>
-            <h1 style={{ fontSize: "1.25rem", fontWeight: 800, margin: 0, color: "var(--ink)", letterSpacing: "-0.5px" }}>EnxtBrain</h1>
+            <h1 style={{ fontSize: "1.25rem", fontWeight: 800, margin: 0, color: "var(--ink)", letterSpacing: "-0.5px" }}>ComBrain</h1>
             <span style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600 }}>AI CRM & HRMS Portal</span>
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function Home() {
 
         {/* Hero Title */}
         <h1 style={{ fontSize: "2.6rem", fontWeight: 800, lineHeight: 1.18, margin: "0 0 14px 0", color: "var(--ink)", maxWidth: "820px", letterSpacing: "-0.8px" }}>
-          Manage Your Business Smarter with <span style={{ background: "linear-gradient(135deg, #7c3aed 0%, #059669 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>EnxtBrain</span>
+          Manage Your Business Smarter with <span style={{ background: "linear-gradient(135deg, #7c3aed 0%, #059669 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>ComBrain</span>
         </h1>
 
         {/* Subtitle */}
@@ -208,3 +208,4 @@ export default function Home() {
     </main>
   );
 }
+

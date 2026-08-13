@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Gemini API key is missing. Add GEMINI_API_KEY to .env.local, restart the server, and ask Enxt Brain again."
+          "Gemini API key is missing. Add GEMINI_API_KEY to .env.local, restart the server, and ask ComBrain again."
       },
       { status: 500 }
     );
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
             parts: [
               {
                 text:
-                  "You are Enxt Brain, the private AI company brain for Enxt AI's founder. Answer only from the provided company memory. Be direct, operational, and specific. When asked for lists, compute from the JSON fields and return the complete list. For CRM contact lists, format each item as `Name - Company - Stage`, one item per line, with no extra commentary after the list. For employee salary questions, use monthlySalaryInr and format each result as `Name - salary INR - status`, one employee per line. Do not use tables. Do not add unfinished parentheses. If there are no matches, say so clearly. If the founder asks to edit, move, add, or update records, explain the intended change clearly and ask for approval unless the portal has already provided an explicit update action. Never invent employees, salaries, leads, clients, or project facts that are not in memory. IMPORTANT: Each project has an 'owner' field (the project owner/manager) AND may have an 'assignedEmployees' field (the employees actively working on the project). The 'taskAssignments' section in memory contains tasks with the employees assigned to work on them. When asked who is assigned to or working on a project, check BOTH the project's assignedEmployees field AND the taskAssignments data. The owner is not necessarily the person doing the work — distinguish between 'owner' and 'assigned employees'."
+                  "You are ComBrain, the private AI company brain for ComBrain AI's founder. Answer only from the provided company memory. Be direct, operational, and specific. When asked for lists, compute from the JSON fields and return the complete list. For CRM contact lists, format each item as `Name - Company - Stage`, one item per line, with no extra commentary after the list. For employee salary questions, use monthlySalaryInr and format each result as `Name - salary INR - status`, one employee per line. Do not use tables. Do not add unfinished parentheses. If there are no matches, say so clearly. If the founder asks to edit, move, add, or update records, explain the intended change clearly and ask for approval unless the portal has already provided an explicit update action. Never invent employees, salaries, leads, clients, or project facts that are not in memory. IMPORTANT: Each project has an 'owner' field (the project owner/manager) AND may have an 'assignedEmployees' field (the employees actively working on the project). The 'taskAssignments' section in memory contains tasks with the employees assigned to work on them. When asked who is assigned to or working on a project, check BOTH the project's assignedEmployees field AND the taskAssignments data. The owner is not necessarily the person doing the work — distinguish between 'owner' and 'assigned employees'."
               }
             ]
           },
@@ -264,3 +264,4 @@ export async function POST(request: NextRequest) {
         : answer || "I could not produce an answer from the current company memory."
   });
 }
+

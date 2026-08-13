@@ -26,6 +26,31 @@ export async function getRBACStore(): Promise<RBACStoreData> {
       return initial;
     }
     const store = data.data as RBACStoreData;
+
+    // Migrate superadmin email if it is old
+    let rbacModified = false;
+    if (store.users) {
+      store.users = store.users.map((u) => {
+        if (u.id === "usr-admin-01" && u.email === "admin@combrain.com") {
+          rbacModified = true;
+          return { ...u, email: "admin@combrain.com" };
+        }
+        return u;
+      });
+    }
+    if (store.audit_logs) {
+      store.audit_logs = store.audit_logs.map((log) => {
+        if (log.performed_by === "admin@combrain.com") {
+          rbacModified = true;
+          return { ...log, performed_by: "admin@combrain.com" };
+        }
+        return log;
+      });
+    }
+    if (rbacModified) {
+      await saveRBACStore(store);
+    }
+
     // Filter out legacy demo seed accounts so only Super Admin and admin-created managers exist
     const seededIds = ["usr-rahul-02", "usr-amit-03", "usr-priya-04"];
     if (store.users) {
@@ -72,3 +97,4 @@ export async function logAuditEvent(
   await saveRBACStore(store);
   return newLog;
 }
+

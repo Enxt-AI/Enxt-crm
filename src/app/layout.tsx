@@ -9,8 +9,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Enxt Brain",
-  description: "Founder CRM and document-native AI company brain for Enxt AI."
+  title: "ComBrain",
+  description: "Founder CRM and document-native AI company brain for ComBrain AI."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

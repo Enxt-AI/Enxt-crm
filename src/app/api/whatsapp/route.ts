@@ -1,4 +1,4 @@
-// Enxt Brain - WhatsApp Cloud API & Gemini Integration Route
+// ComBrain - WhatsApp Cloud API & Gemini Integration Route
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -18,9 +18,9 @@ export async function POST(request: Request) {
       if (apiKey) {
         try {
           const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-          const prompt = `You are Enxt Brain, the AI assistant for Enxt AI.
+          const prompt = `You are ComBrain, the AI assistant for ComBrain AI.
 Write an enthusiastic, warm, single-line WhatsApp welcome message for team member "${employeeName}".
-Mention that they are set up on the Enxt Brain portal and can reply with "Hi" anytime to view assigned tasks, update project status, or chat with the AI.
+Mention that they are set up on the ComBrain portal and can reply with "Hi" anytime to view assigned tasks, update project status, or chat with the AI.
 Include friendly emojis. CRITICAL: Keep your entire output on ONE SINGLE LINE without any line breaks or newlines.`;
 
           const gRes = await fetch(
@@ -35,7 +35,7 @@ Include friendly emojis. CRITICAL: Keep your entire output on ONE SINGLE LINE wi
                 system_instruction: {
                   parts: [
                     {
-                      text: "You are Enxt Brain AI assistant. Generate concise, single-line WhatsApp welcome messages for team members."
+                      text: "You are ComBrain AI assistant. Generate concise, single-line WhatsApp welcome messages for team members."
                     }
                   ]
                 },

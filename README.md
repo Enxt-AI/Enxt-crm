@@ -1,6 +1,6 @@
-# Enxt Brain
+# ComBrain
 
-Enxt Brain is a lightweight Next.js prototype for an Enxt AI company brain. It starts as a document-native CRM and founder dashboard for employees, AI projects, clients, and leads.
+ComBrain is a lightweight Next.js prototype for an ComBrain AI company brain. It starts as a document-native CRM and founder dashboard for employees, AI projects, clients, and leads.
 
 ## Current MVP
 
@@ -25,3 +25,4 @@ Then open `http://localhost:3000`.
 Documents are the source of truth. Tables, CRM boards, dashboards, and AI answers should be generated from documents and structured metadata, not from disconnected views.
 
 The future AI layer should retrieve documents, answer questions with grounded context, and propose edits through an approval flow before company memory changes.
+

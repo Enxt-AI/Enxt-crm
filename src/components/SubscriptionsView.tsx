@@ -45,7 +45,7 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0
   }).format(value);
 
-const DEPARTMENTS = ["Enxt AI", "Sales & CRM", "HR & Admin", "Marketing", "Engineering", "Design", "Finance", "Founder Office", "Operations"];
+const DEPARTMENTS = ["ComBrain AI", "Sales & CRM", "HR & Admin", "Marketing", "Engineering", "Design", "Finance", "Founder Office", "Operations"];
 const BILLING_CYCLES = ["Monthly", "Quarterly", "Yearly"];
 const STATUSES = ["Active", "Due Soon", "Renewal Needed", "Expired"];
 
@@ -119,7 +119,7 @@ export default function SubscriptionsView({
     renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     expiryDate: "",
     owner: "",
-    department: "Enxt AI",
+    department: "ComBrain AI",
     paymentMethod: "Credit Card",
     invoiceNumber: "",
     billingEmail: "",
@@ -468,7 +468,7 @@ export default function SubscriptionsView({
       renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
       expiryDate: "",
       owner: "",
-      department: "Enxt AI",
+      department: "ComBrain AI",
       paymentMethod: "Credit Card",
       invoiceNumber: "",
       billingEmail: "",
@@ -496,7 +496,7 @@ export default function SubscriptionsView({
       renewalDate: parseToISODate(asText(sub, "renewalDate")) || new Date().toISOString().slice(0, 10),
       expiryDate: parseToISODate(asText(sub, "expiryDate")) || "",
       owner: asText(sub, "owner"),
-      department: asText(sub, "department") || "Enxt AI",
+      department: asText(sub, "department") || "ComBrain AI",
       paymentMethod: asText(sub, "paymentMethod") || "Credit Card",
       invoiceNumber: asText(sub, "invoiceNumber"),
       billingEmail: asText(sub, "billingEmail"),
@@ -1484,7 +1484,7 @@ export default function SubscriptionsView({
 
                 <label className="field-control">
                   <span>Billing Email</span>
-                  <input type="email" value={formFields.billingEmail} onChange={(e) => setFormFields({ ...formFields, billingEmail: e.target.value })} placeholder="e.g. finance@enxt.co" />
+                  <input type="email" value={formFields.billingEmail} onChange={(e) => setFormFields({ ...formFields, billingEmail: e.target.value })} placeholder="e.g. finance@ComBrain.co" />
                 </label>
 
                 <label className="field-control">
@@ -1518,3 +1518,4 @@ export default function SubscriptionsView({
     </div>
   );
 }
+
